@@ -12,10 +12,9 @@ Adafruit_NeoPixel led_ring(NUMBER_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
 //   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
 
-void LED_Controller::led_init()
-{
-  led_ring.begin(); // Initialize NeoPixel strip object (REQUIRED)
-  led_ring.show();  // Initialize all pixels to 'off'
+void LED_Controller::led_init() {
+  led_ring.begin();  // Initialize NeoPixel strip object (REQUIRED)
+  led_ring.show();   // Initialize all pixels to 'off'
 }
 
 // Fill strip pixels one after another with a color. Strip is NOT cleared
@@ -24,27 +23,99 @@ void LED_Controller::led_init()
 // strip.Color(red, green, blue) as shown in the loop() function above),
 // and a delay time (in milliseconds) between pixels.
 void LED_Controller::colorWipe(uint32_t color, int wait) {
-  for(int i=0; i<led_ring.numPixels(); i++) { // For each pixel in strip...
-    led_ring.setPixelColor(i, color);         //  Set pixel's color (in RAM)
-    led_ring.show();                          //  Update strip to match
-    delay(wait);                           //  Pause for a moment
+  for (int i = 0; i < led_ring.numPixels(); i++) {  // For each pixel in strip...
+    led_ring.setPixelColor(i, color);               //  Set pixel's color (in RAM)
+    led_ring.show();                                //  Update strip to match
+    delay(wait);                                    //  Pause for a moment
   }
 }
+
+
+
+
+void LED_Controller::showSystemError(bool forever) {
+  do {
+    this->theaterChase(led_ring.Color(255, 0, 0), 30);
+  } while (forever);
+}
+
+void LED_Controller::showSystemWorking() {
+  this->rainbowFade2White(3, 5, 1);
+}
+
+
+
+
 
 // Theater-marquee-style chasing lights. Pass in a color (32-bit value,
 // a la strip.Color(r,g,b) as mentioned above), and a delay time (in ms)
 // between frames.
 void LED_Controller::theaterChase(uint32_t color, int wait) {
-  for(int a=0; a<10; a++) {  // Repeat 10 times...
-    for(int b=0; b<3; b++) { //  'b' counts from 0 to 2...
-      led_ring.clear();         //   Set all pixels in RAM to 0 (off)
+  for (int a = 0; a < 10; a++) {   // Repeat 10 times...
+    for (int b = 0; b < 3; b++) {  //  'b' counts from 0 to 2...
+      led_ring.clear();            //   Set all pixels in RAM to 0 (off)
       // 'c' counts up from 'b' to end of strip in steps of 3...
-      for(int c=b; c<led_ring.numPixels(); c += 3) {
-        led_ring.setPixelColor(c, color); // Set pixel 'c' to value 'color'
+      for (int c = b; c < led_ring.numPixels(); c += 3) {
+        led_ring.setPixelColor(c, color);  // Set pixel 'c' to value 'color'
       }
-      led_ring.show(); // Update strip with new contents
-      delay(wait);  // Pause for a moment
+      led_ring.show();  // Update strip with new contents
+      delay(wait);      // Pause for a moment
     }
   }
+}
+
+
+
+void LED_Controller::rainbowFade2White(int wait, int rainbowLoops, int whiteLoops) {
+  int fadeVal=0, fadeMax=100;
+
+  // Hue of first pixel runs 'rainbowLoops' complete loops through the color
+  // wheel. Color wheel has a range of 65536 but it's OK if we roll over, so
+  // just count from 0 to rainbowLoops*65536, using steps of 256 so we
+  // advance around the wheel at a decent clip.
+  for(uint32_t firstPixelHue = 0; firstPixelHue < rainbowLoops*65536;
+    firstPixelHue += 256) {
+
+    for(int i=0; i<led_ring.numPixels(); i++) { // For each pixel in strip...
+
+      // Offset pixel hue by an amount to make one full revolution of the
+      // color wheel (range of 65536) along the length of the strip
+      // (strip.numPixels() steps):
+      uint32_t pixelHue = firstPixelHue + (i * 65536L / led_ring.numPixels());
+
+      // strip.ColorHSV() can take 1 or 3 arguments: a hue (0 to 65535) or
+      // optionally add saturation and value (brightness) (each 0 to 255).
+      // Here we're using just the three-argument variant, though the
+      // second value (saturation) is a constant 255.
+      led_ring.setPixelColor(i, led_ring.gamma32(led_ring.ColorHSV(pixelHue, 255,
+        255 * fadeVal / fadeMax)));
+    }
+
+    led_ring.show();
+    delay(wait);
+
+    if(firstPixelHue < 65536) {                              // First loop,
+      if(fadeVal < fadeMax) fadeVal++;                       // fade in
+    } else if(firstPixelHue >= ((rainbowLoops-1) * 65536)) { // Last loop,
+      if(fadeVal > 0) fadeVal--;                             // fade out
+    } else {
+      fadeVal = fadeMax; // Interim loop, make sure fade is at max
+    }
+  }
+
+  for(int k=0; k<whiteLoops; k++) {
+    for(int j=0; j<256; j++) { // Ramp up 0 to 255
+      // Fill entire strip with white at gamma-corrected brightness level 'j':
+      led_ring.fill(led_ring.Color(0, 0, 0, led_ring.gamma8(j)));
+      led_ring.show();
+    }
+    delay(1000); // Pause 1 second
+    for(int j=255; j>=0; j--) { // Ramp down 255 to 0
+      led_ring.fill(led_ring.Color(0, 0, 0, led_ring.gamma8(j)));
+      led_ring.show();
+    }
+  }
+
+  delay(500); // Pause 1/2 second
 }
 
