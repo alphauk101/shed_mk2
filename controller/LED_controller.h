@@ -3,7 +3,7 @@
 #include "Arduino.h" 
 #include "IO_pins.h"
 
-#define NUMBER_LEDS   12
+
 
 
 class LED_Controller
@@ -13,6 +13,10 @@ class LED_Controller
     void colorWipe(uint32_t color, int wait);
     void showSystemError(bool);
     void showSystemWorking(void);
+    /*Sets the given LEDs for the sockets animates LEDs
+    light, heater, fan, misc
+    */
+    void setShowSocketStatus(bool,bool,bool,bool);
   private:
     void theaterChase(uint32_t color, int wait);
     void rainbowFade2White(int wait, int rainbowLoops, int whiteLoops);

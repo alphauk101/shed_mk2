@@ -1,6 +1,14 @@
 #include "LED_controller.h"
 #include <Adafruit_NeoPixel.h>
 
+#define NUMBER_LEDS   12
+
+
+#define LIGHT_LED     2
+#define HEATER_LED    1
+#define FAN_LED       11
+#define MISC_LED      10
+
 // Declare our NeoPixel strip object:
 Adafruit_NeoPixel led_ring(NUMBER_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 // Argument 1 = Number of pixels in NeoPixel strip
@@ -44,6 +52,44 @@ void LED_Controller::showSystemWorking() {
 }
 
 
+/*Sets the given LEDs for the sockets animates LEDs
+    light, heater, fan, misc
+    */
+void LED_Controller::setShowSocketStatus(bool light, bool heater, bool fan, bool misc) {
+
+    for (int a = 0; a < 10; a++) {   // Repeat 10 times...
+    for (int b = 0; b < 3; b++) {  //  'b' counts from 0 to 2...
+      led_ring.clear();            //   Set all pixels in RAM to 0 (off)
+      // 'c' counts up from 'b' to end of strip in steps of 3...
+
+      for (int i = 0; i < led_ring.numPixels(); i++) {
+        led_ring.setPixelColor(i, led_ring.Color(0, 50, 0));  // Set pixel 'c' to value 'color'
+      }
+
+      for (int c = b; c < led_ring.numPixels(); c += 3) {
+        led_ring.setPixelColor(c, led_ring.Color(0, 255, 0));  // Set pixel 'c' to value 'color'
+      }
+
+      if(light)
+        led_ring.setPixelColor(LIGHT_LED, led_ring.Color(255, 0, 0));
+      
+      if(heater)
+        led_ring.setPixelColor(HEATER_LED, led_ring.Color(255, 0, 0));
+      
+      if(fan)
+        led_ring.setPixelColor(FAN_LED, led_ring.Color(255, 0, 0));
+      
+      if(misc)
+        led_ring.setPixelColor(MISC_LED, led_ring.Color(255, 0, 0));
+
+
+      led_ring.show();  // Update strip with new contents
+      delay(50);      // Pause for a moment
+    }
+  }
+
+}
+
 
 
 
@@ -67,16 +113,16 @@ void LED_Controller::theaterChase(uint32_t color, int wait) {
 
 
 void LED_Controller::rainbowFade2White(int wait, int rainbowLoops, int whiteLoops) {
-  int fadeVal=0, fadeMax=100;
+  int fadeVal = 0, fadeMax = 100;
 
   // Hue of first pixel runs 'rainbowLoops' complete loops through the color
   // wheel. Color wheel has a range of 65536 but it's OK if we roll over, so
   // just count from 0 to rainbowLoops*65536, using steps of 256 so we
   // advance around the wheel at a decent clip.
-  for(uint32_t firstPixelHue = 0; firstPixelHue < rainbowLoops*65536;
-    firstPixelHue += 256) {
+  for (uint32_t firstPixelHue = 0; firstPixelHue < rainbowLoops * 65536;
+       firstPixelHue += 256) {
 
-    for(int i=0; i<led_ring.numPixels(); i++) { // For each pixel in strip...
+    for (int i = 0; i < led_ring.numPixels(); i++) {  // For each pixel in strip...
 
       // Offset pixel hue by an amount to make one full revolution of the
       // color wheel (range of 65536) along the length of the strip
@@ -88,34 +134,33 @@ void LED_Controller::rainbowFade2White(int wait, int rainbowLoops, int whiteLoop
       // Here we're using just the three-argument variant, though the
       // second value (saturation) is a constant 255.
       led_ring.setPixelColor(i, led_ring.gamma32(led_ring.ColorHSV(pixelHue, 255,
-        255 * fadeVal / fadeMax)));
+                                                                   255 * fadeVal / fadeMax)));
     }
 
     led_ring.show();
     delay(wait);
 
-    if(firstPixelHue < 65536) {                              // First loop,
-      if(fadeVal < fadeMax) fadeVal++;                       // fade in
-    } else if(firstPixelHue >= ((rainbowLoops-1) * 65536)) { // Last loop,
-      if(fadeVal > 0) fadeVal--;                             // fade out
+    if (firstPixelHue < 65536) {                                 // First loop,
+      if (fadeVal < fadeMax) fadeVal++;                          // fade in
+    } else if (firstPixelHue >= ((rainbowLoops - 1) * 65536)) {  // Last loop,
+      if (fadeVal > 0) fadeVal--;                                // fade out
     } else {
-      fadeVal = fadeMax; // Interim loop, make sure fade is at max
+      fadeVal = fadeMax;  // Interim loop, make sure fade is at max
     }
   }
 
-  for(int k=0; k<whiteLoops; k++) {
-    for(int j=0; j<256; j++) { // Ramp up 0 to 255
+  for (int k = 0; k < whiteLoops; k++) {
+    for (int j = 0; j < 256; j++) {  // Ramp up 0 to 255
       // Fill entire strip with white at gamma-corrected brightness level 'j':
       led_ring.fill(led_ring.Color(0, 0, 0, led_ring.gamma8(j)));
       led_ring.show();
     }
-    delay(1000); // Pause 1 second
-    for(int j=255; j>=0; j--) { // Ramp down 255 to 0
+    delay(1000);                      // Pause 1 second
+    for (int j = 255; j >= 0; j--) {  // Ramp down 255 to 0
       led_ring.fill(led_ring.Color(0, 0, 0, led_ring.gamma8(j)));
       led_ring.show();
     }
   }
 
-  delay(500); // Pause 1/2 second
+  delay(500);  // Pause 1/2 second
 }
-
