@@ -19,6 +19,14 @@ void relay_manager::relay_init() {
 
   //Ensure all relays are in the off state on initialisation.
   this->setall_state(RELAY_OFF);
+/*
+  while (1) {
+    delay(500);
+    this->setall_state(RELAY_OFF);
+    delay(500);
+    this->setall_state(RELAY_ON);
+  }
+  */
 }
 
 
