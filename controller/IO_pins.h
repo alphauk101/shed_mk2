@@ -11,5 +11,13 @@
 #define LIGHT_RELAY_PIN         A2
 #define MISC_RELAY_PIN          A3
 
+#define DISP_1_PIN              3
+#define DISP_2_PIN              4
+#define DISP_3_PIN              5
+#define DISP_4_PIN              6
+
+
+#define DOOR_SENSE_PIN          2
+
 
 #endif

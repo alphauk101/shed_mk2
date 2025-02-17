@@ -22,7 +22,7 @@ bool internal_tmphum::init_temphum()
     }
       
 
-    delay(5000);
+    delay(500);
     retries--;
   }
 
@@ -41,7 +41,7 @@ float internal_tmphum::get_temp() {
   if (raw_temp == AHTXX_ERROR)  //AHTXX_ERROR = 255, library returns 255 if error occurs
   {
     aht20.softReset();
-    delay(2000);
+    delay(150);
     raw_temp = aht20.readTemperature();
     //read again, if error occurs then assume a fault
   }
@@ -55,7 +55,7 @@ float internal_tmphum::get_humd() {
   if (raw_temp == AHTXX_ERROR)      //AHTXX_ERROR = 255, library returns 255 if error occurs
   {
     aht20.softReset();
-    delay(2000);
+    delay(150);
     raw_temp = aht20.readHumidity();
     //read again, if error occurs then assume a fault
   }

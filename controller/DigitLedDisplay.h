@@ -10,7 +10,7 @@
 #endif
 
 const static byte charTable[] PROGMEM = {
-  B01111110, B00110000, B01101101, B01111001, B00110011, B01011011, B01011111, B01110000, B01111111, B01111011, B10000000,
+  B01111110, B00110000, B01101101, B01111001, B00110011, B01011011, B01011111, B01110000, B01111111, B01111011
 };
 
 class DigitLedDisplay {
@@ -25,6 +25,7 @@ public:
   void setBright(int brightness);
   void setDigitLimit(int limit);
   void printDigit(long number, byte startDigit, boolean period);
+  void printMinus(byte startDigit);
   void write(byte address, byte data);
   void clear();
   void on();

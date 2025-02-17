@@ -67,6 +67,11 @@ void DigitLedDisplay::write(volatile byte address, volatile byte data) {
   digitalWrite(CS_PIN, HIGH);
 }
 
+void DigitLedDisplay::printMinus(byte startDigit) {
+  byte tableValue;
+  tableValue = B00000001;
+  this->write(startDigit, tableValue);
+}
 
 void DigitLedDisplay::printDigit(long number, byte startDigit, boolean period) {
   String figure = String(number);
