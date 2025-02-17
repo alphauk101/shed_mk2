@@ -68,7 +68,7 @@ void setup() {
 
   //setup IRQ for door sense
   pinMode(DOOR_SENSE_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(DOOR_SENSE_PIN), door_sense_irq, CHANGE);
+  //attachInterrupt(digitalPinToInterrupt(DOOR_SENSE_PIN), door_sense_irq, CHANGE);
 
   gApp_data.heater_relay = false;
   gApp_data.light_relay = false;
@@ -134,6 +134,16 @@ void loop() {
 
   //Door sense logic
   check_door_state();
+
+
+  
+  static uint64_t dev_timer;
+  if (gApp_data.sys_time != dev_timer) {
+    Serial.println("=======SYS TIMER======");
+    dev_timer = gApp_data.sys_time;
+    Serial.print((int)gApp_data.sys_time);
+    Serial.println(" Secs");
+  }
 }
 
 
@@ -162,7 +172,6 @@ void do_environment_sampling() {
     Serial.print(gApp_data.ext_temperature);
     Serial.println(" C");
 #endif
-
   }
 }
 
@@ -187,7 +196,7 @@ void do_check_sockets() {
     }
 
     //door state = light
-    gApp_data.light_relay = gApp_data.system_sleeping;
+    gApp_data.light_relay = (gApp_data.system_sleeping)?false:true;
 
     // set the states
     gRelayManager.set_state_all(gApp_data.heater_relay,
@@ -206,14 +215,14 @@ void check_door_state() {
 
   if (digitalRead(DOOR_SENSE_PIN) == DOOR_OPEN) {
 #ifdef DEV_MODE
-    Serial.println("Door open");
+    //Serial.println("Door open");
 #endif
     //Make sure the light is turned on
     gApp_data.system_sleeping = false;
     gApp_data.doorclosed_timer = (DOOR_HOLD_OPEN_TIMER + gApp_data.sys_time);
   } else {
 #ifdef DEV_MODE
-    Serial.println("Door closed");
+    //Serial.println("Door closed");
 #endif
     if (gApp_data.doorclosed_timer < gApp_data.sys_time) {
       //system asleep

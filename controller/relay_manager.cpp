@@ -7,8 +7,8 @@
 #define P_LIGHT LIGHT_RELAY_PIN
 #define P_MISC MISC_RELAY_PIN
 
-#define RELAY_OFF true
-#define RELAY_ON false
+#define RELAY_OFF   true
+#define RELAY_ON    false
 
 
 void relay_manager::relay_init() {

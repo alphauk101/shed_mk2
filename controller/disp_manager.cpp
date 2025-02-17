@@ -7,21 +7,29 @@ typedef struct {
   float ext_hi, ext_lo;
   float int_hi, int_lo;
   bool sys_sleep;
+  bool scrns_initd;
 } DISPLAY_DATA;
 DISPLAY_DATA g_display_data;
 
 /******************************************
 *         Macros and helpers
 ******************************************/
-#define INTTEMPHUM_DISPLAY        display_1
-#define EXTTEMP_DISPLAY           display_2
-#define HILO_INT_DISPLAY          display_3
-#define HILO_EXT_DISPLAY          display_4
+#define INTTEMPHUM_DISPLAY display_1
+#define EXTTEMP_DISPLAY display_2
+#define HILO_INT_DISPLAY display_3
+#define HILO_EXT_DISPLAY display_4
 
-#define CLEAR_INTTEMPHUM_DISP       INTTEMPHUM_DISPLAY.clear()
-#define CLEAR_EXTTEMP_DISP          EXTTEMP_DISPLAY.clear()
-#define CLEAR_DISP_HILO_INT         HILO_INT_DISPLAY.clear()
-#define CLEAR_DISP_HILO_EXT         HILO_EXT_DISPLAY.clear()
+#define CLEAR_INTTEMPHUM_DISP INTTEMPHUM_DISPLAY.clear()
+#define CLEAR_EXTTEMP_DISP EXTTEMP_DISPLAY.clear()
+#define CLEAR_DISP_HILO_INT HILO_INT_DISPLAY.clear()
+#define CLEAR_DISP_HILO_EXT HILO_EXT_DISPLAY.clear()
+
+#define INIT_ALL_DISPLAYS \
+  INTTEMPHUM_DISPLAY.setDigitLimit(8); \
+  HILO_EXT_DISPLAY.setDigitLimit(8); \
+  HILO_INT_DISPLAY.setDigitLimit(8); \
+  EXTTEMP_DISPLAY.setDigitLimit(8); \
+  g_display_data.scrns_initd = true;
 
 #define CLEAR_ALL_DISPLAYS \
   CLEAR_INTTEMPHUM_DISP; \
@@ -39,10 +47,8 @@ DigitLedDisplay display_4 = DigitLedDisplay(13, DISP_4_PIN, 11);
 
 
 void disp_manager::disp_init() {
-  INTTEMPHUM_DISPLAY.setDigitLimit(8);
-  EXTTEMP_DISPLAY.setDigitLimit(8);
-  HILO_INT_DISPLAY.setDigitLimit(8);
-  HILO_EXT_DISPLAY.setDigitLimit(8);
+
+  INIT_ALL_DISPLAYS;
 
   this->setBrightAllDisp(10);
 
@@ -76,6 +82,13 @@ void disp_manager::disp_environments(float i_temp, float i_hum, float e_temp) {
   //Clear the displays first
 
   if (!g_display_data.sys_sleep) {
+
+    //Reinit any displays if they have lost power
+    if(g_display_data.scrns_initd == false)
+    {
+      INIT_ALL_DISPLAYS;
+    }
+
     //If system not sleeping then display content
     this->convertTemperatureData(i_temp, &temp_data);
     //Internal temp and hum
@@ -104,9 +117,9 @@ void disp_manager::disp_environments(float i_temp, float i_hum, float e_temp) {
   this->disp_historic_environments(i_temp, i_hum, e_temp);
 
   //If system is a sleep make sure the displays are cleared
-  if(g_display_data.sys_sleep)
-  {
-      CLEAR_ALL_DISPLAYS;
+  if (g_display_data.sys_sleep) {
+    CLEAR_ALL_DISPLAYS;
+    g_display_data.scrns_initd = false;
   }
 }
 

@@ -16,7 +16,6 @@
 #define DISP_3_PIN              5
 #define DISP_4_PIN              6
 
-
 #define DOOR_SENSE_PIN          2
 
 
