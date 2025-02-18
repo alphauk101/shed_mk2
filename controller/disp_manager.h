@@ -16,6 +16,8 @@ private:
   void setBrightAllDisp(int);
   void convertTemperatureData(float , dispTempData *);
   void disp_historic_environments(float i_temp, float i_hum, float e_temp);
+  void get_NVM_data(void);
+  void set_NVM_data(void);
 };
 
 

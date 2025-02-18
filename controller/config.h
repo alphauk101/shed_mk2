@@ -12,7 +12,10 @@
 
 #define DOOR_HOLD_OPEN_TIMER          120
 
+#define TEMPHUM_SAMPLE_TIME           10
 
+//If defined forces the door status to the open state
+//#define OVERRIDE_DOORSENSOR
 
 
 #endif

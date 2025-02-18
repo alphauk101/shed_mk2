@@ -11,6 +11,7 @@
 
 #define SOCKET_CHECK_TIME_SEC 2
 
+
 #define DOOR_CLOSED LOW
 #define DOOR_OPEN HIGH
 
@@ -135,8 +136,19 @@ void loop() {
   //Door sense logic
   check_door_state();
 
+  if (gApp_data.system_sleeping == false) {
+    //bool light, bool heater, bool fan, bool misc
+    gLEDcontroller.setShowSocketStatus(gApp_data.light_relay,
+                                       gApp_data.heater_relay,
+                                       gApp_data.fan_relay,
+                                       gApp_data.misc_relay);
+  } else {
+    if ((gApp_data.sys_time % 20) == 0)
+      gLEDcontroller.colourSwell(255, 0, 0, 20);
+  }
 
-  
+
+#ifdef DEV_MODE
   static uint64_t dev_timer;
   if (gApp_data.sys_time != dev_timer) {
     Serial.println("=======SYS TIMER======");
@@ -144,12 +156,16 @@ void loop() {
     Serial.print((int)gApp_data.sys_time);
     Serial.println(" Secs");
   }
+#endif
 }
 
 
 /*Samples once a second*/
 void do_environment_sampling() {
-  if (gApp_data.environ_timer < gApp_data.sys_time) {
+  if (gApp_data.sys_time > gApp_data.environ_timer) {
+
+    gApp_data.environ_timer = (TEMPHUM_SAMPLE_TIME + gApp_data.sys_time);
+
     //DO temp and hum readings
     gApp_data.int_temperature = gIntTempHum.get_temp();
     gApp_data.int_humid = gIntTempHum.get_humd();
@@ -159,7 +175,6 @@ void do_environment_sampling() {
                                    gApp_data.int_humid,
                                    gApp_data.ext_temperature);
 
-    gApp_data.environ_timer = gApp_data.sys_time;
 
 #ifdef DEV_MODE
     Serial.println("=======INTERNAL======");
@@ -196,7 +211,7 @@ void do_check_sockets() {
     }
 
     //door state = light
-    gApp_data.light_relay = (gApp_data.system_sleeping)?false:true;
+    gApp_data.light_relay = (gApp_data.system_sleeping) ? false : true;
 
     // set the states
     gRelayManager.set_state_all(gApp_data.heater_relay,
@@ -229,5 +244,7 @@ void check_door_state() {
       gApp_data.system_sleeping = true;
     }
   }
-  //}
+#ifdef OVERRIDE_DOORSENSOR
+  gApp_data.system_sleeping = false;
+#endif
 }

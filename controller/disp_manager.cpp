@@ -2,10 +2,22 @@
 #include "disp_manager.h"
 #include "DigitLedDisplay.h"
 #include "IO_pins.h"
+#include <EEPROM.h>
+
+#define SANITY 0xA2
+#define NVM_START_ADDRESS 0
 
 typedef struct {
+  uint8_t sanity;
+  bool changed;
   float ext_hi, ext_lo;
   float int_hi, int_lo;
+} NVM_ENVIRON;
+#define LEN_NVM_BUFFER sizeof(NVM_ENVIRON)
+uint8_t nvm_buffer[LEN_NVM_BUFFER];
+
+typedef struct {
+  NVM_ENVIRON hist_data;
   bool sys_sleep;
   bool scrns_initd;
 } DISPLAY_DATA;
@@ -15,8 +27,8 @@ DISPLAY_DATA g_display_data;
 *         Macros and helpers
 ******************************************/
 #define INTTEMPHUM_DISPLAY display_1
-#define EXTTEMP_DISPLAY display_2
-#define HILO_INT_DISPLAY display_3
+#define EXTTEMP_DISPLAY display_3
+#define HILO_INT_DISPLAY display_2
 #define HILO_EXT_DISPLAY display_4
 
 #define CLEAR_INTTEMPHUM_DISP INTTEMPHUM_DISPLAY.clear()
@@ -54,14 +66,39 @@ void disp_manager::disp_init() {
 
   CLEAR_ALL_DISPLAYS;
 
-  //Set all display data to the extremes
-  g_display_data.ext_lo = __FLT_MAX__;
-  g_display_data.int_lo = __FLT_MAX__;
-  g_display_data.ext_hi = __FLT_MIN__;
-  g_display_data.int_hi = __FLT_MIN__;
-
   g_display_data.sys_sleep = false;
+
+  //Init nvm data
+  this->get_NVM_data();
 }
+
+void disp_manager::get_NVM_data() {
+
+  for (int a = 0; a < LEN_NVM_BUFFER; a++) {
+    nvm_buffer[a] = EEPROM.read(NVM_START_ADDRESS + a);
+  }
+  memcpy(&g_display_data.hist_data, nvm_buffer, LEN_NVM_BUFFER);
+
+  if (g_display_data.hist_data.sanity != SANITY) {
+    //Init the data
+    //Set all display data to the extremes
+    g_display_data.hist_data.ext_lo = __FLT_MAX__;
+    g_display_data.hist_data.int_lo = __FLT_MAX__;
+    g_display_data.hist_data.ext_hi = __FLT_MIN__;
+    g_display_data.hist_data.int_hi = __FLT_MIN__;
+    g_display_data.hist_data.changed = false;
+  }  //Else the data should be good
+}
+
+void disp_manager::set_NVM_data() {
+  g_display_data.hist_data.sanity = SANITY; //important!
+  memcpy(&nvm_buffer[0], &g_display_data.hist_data , LEN_NVM_BUFFER);
+
+  for (int a = 0; a < LEN_NVM_BUFFER; a++) {
+    EEPROM.update((NVM_START_ADDRESS + a), nvm_buffer[a]);
+  }
+}
+
 
 void disp_manager::setBrightAllDisp(int bright) {
   INTTEMPHUM_DISPLAY.setBright(bright);
@@ -84,8 +121,7 @@ void disp_manager::disp_environments(float i_temp, float i_hum, float e_temp) {
   if (!g_display_data.sys_sleep) {
 
     //Reinit any displays if they have lost power
-    if(g_display_data.scrns_initd == false)
-    {
+    if (g_display_data.scrns_initd == false) {
       INIT_ALL_DISPLAYS;
     }
 
@@ -119,8 +155,9 @@ void disp_manager::disp_environments(float i_temp, float i_hum, float e_temp) {
   //If system is a sleep make sure the displays are cleared
   if (g_display_data.sys_sleep) {
     CLEAR_ALL_DISPLAYS;
-    g_display_data.scrns_initd = false;
   }
+  //Force an init on every update
+  g_display_data.scrns_initd = false;
 }
 
 void disp_manager::disp_historic_environments(float i_temp, float i_hum, float e_temp) {
@@ -129,21 +166,38 @@ void disp_manager::disp_historic_environments(float i_temp, float i_hum, float e
   /*If the system is a sleep we still want to store the historic temp data 
   but dont display it*/
 
-  if (i_temp > g_display_data.int_hi) g_display_data.int_hi = i_temp;
-  if (i_temp < g_display_data.int_lo) g_display_data.int_lo = i_temp;
+  if (i_temp > g_display_data.hist_data.int_hi) {
+    g_display_data.hist_data.int_hi = i_temp;
+    g_display_data.hist_data.changed = true;
+  }
 
-  if (e_temp > g_display_data.ext_hi) g_display_data.ext_hi = e_temp;
-  if (e_temp < g_display_data.ext_lo) g_display_data.ext_lo = e_temp;
+  if (i_temp < g_display_data.hist_data.int_lo) {
+    g_display_data.hist_data.int_lo = i_temp;
+    g_display_data.hist_data.changed = true;
+  }
 
+  if (e_temp > g_display_data.hist_data.ext_hi) {
+    g_display_data.hist_data.ext_hi = e_temp;
+    g_display_data.hist_data.changed = true;
+  }
+  if (e_temp < g_display_data.hist_data.ext_lo) {
+    g_display_data.hist_data.ext_lo = e_temp;
+    g_display_data.hist_data.changed = true;
+  }
+
+  if (g_display_data.hist_data.changed == true) {
+    this->set_NVM_data();
+    g_display_data.hist_data.changed = false;
+  }
 
   //Internal temp and hum
   if (!g_display_data.sys_sleep) {
-    this->convertTemperatureData(g_display_data.int_hi, &temp_data);
+    this->convertTemperatureData(g_display_data.hist_data.int_hi, &temp_data);
     CLEAR_DISP_HILO_INT;
     HILO_INT_DISPLAY.printDigit(temp_data.frac, 5, false);
     HILO_INT_DISPLAY.printDigit(temp_data.dec, 6, true);
 
-    this->convertTemperatureData(g_display_data.int_lo, &temp_data);
+    this->convertTemperatureData(g_display_data.hist_data.int_lo, &temp_data);
     HILO_INT_DISPLAY.printDigit(temp_data.frac, 0, false);
     HILO_INT_DISPLAY.printDigit(temp_data.dec, 1, true);
     if (!temp_data.positive) {
@@ -152,11 +206,11 @@ void disp_manager::disp_historic_environments(float i_temp, float i_hum, float e
 
     //External temp and hum
     CLEAR_DISP_HILO_EXT;
-    this->convertTemperatureData(g_display_data.ext_hi, &temp_data);
+    this->convertTemperatureData(g_display_data.hist_data.ext_hi, &temp_data);
     HILO_EXT_DISPLAY.printDigit(temp_data.frac, 5, false);
     HILO_EXT_DISPLAY.printDigit(temp_data.dec, 6, true);
 
-    this->convertTemperatureData(g_display_data.ext_lo, &temp_data);
+    this->convertTemperatureData(g_display_data.hist_data.ext_lo, &temp_data);
     HILO_EXT_DISPLAY.printDigit(temp_data.frac, 0, false);
     HILO_EXT_DISPLAY.printDigit(temp_data.dec, 1, true);
     if (!temp_data.positive) {

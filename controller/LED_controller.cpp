@@ -1,13 +1,13 @@
 #include "LED_controller.h"
 #include <Adafruit_NeoPixel.h>
 
-#define NUMBER_LEDS   12
+#define NUMBER_LEDS 12
 
 
-#define LIGHT_LED     2
-#define HEATER_LED    1
-#define FAN_LED       11
-#define MISC_LED      10
+#define LIGHT_LED 2
+#define HEATER_LED 1
+#define FAN_LED 11
+#define MISC_LED 10
 
 // Declare our NeoPixel strip object:
 Adafruit_NeoPixel led_ring(NUMBER_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -39,6 +39,34 @@ void LED_Controller::colorWipe(uint32_t color, int wait) {
 }
 
 
+void LED_Controller::colourSwell(uint8_t r, uint8_t g, uint8_t b, int wait) {
+
+
+  for (int a = 0; a < 10; a++) {
+    led_ring.clear();
+    for (int i = 0; i < led_ring.numPixels(); i++) {       // For each pixel in strip...
+      led_ring.setPixelColor(i, led_ring.Color(r, g, b));  //  Set pixel's color (in RAM)                              //  Update strip to match                                 //  Pause for a moment
+    }
+    //   Set all pixels in RAM to 0 (off)
+    led_ring.setBrightness(a * 25);
+    led_ring.show();  // Update strip with new contents
+    delay(wait);      // Pause for a moment
+  }
+  for (int b = 0; b < 10; b++) {
+    led_ring.clear();
+    for (int i = 0; i < led_ring.numPixels(); i++) {       // For each pixel in strip...
+      led_ring.setPixelColor(i, led_ring.Color(r, g, b));  //  Set pixel's color (in RAM)                              //  Update strip to match                                 //  Pause for a moment
+    }
+    //   Set all pixels in RAM to 0 (off)
+    led_ring.setBrightness(255 - (b * 25));
+    led_ring.show();  // Update strip with new contents
+    delay(wait);      // Pause for a moment
+  }
+
+  led_ring.clear();
+  led_ring.show();
+}
+
 
 
 void LED_Controller::showSystemError(bool forever) {
@@ -57,7 +85,7 @@ void LED_Controller::showSystemWorking() {
     */
 void LED_Controller::setShowSocketStatus(bool light, bool heater, bool fan, bool misc) {
 
-    for (int a = 0; a < 10; a++) {   // Repeat 10 times...
+  for (int a = 0; a < 3; a++) {    // Repeat 10 times...
     for (int b = 0; b < 3; b++) {  //  'b' counts from 0 to 2...
       led_ring.clear();            //   Set all pixels in RAM to 0 (off)
       // 'c' counts up from 'b' to end of strip in steps of 3...
@@ -70,24 +98,23 @@ void LED_Controller::setShowSocketStatus(bool light, bool heater, bool fan, bool
         led_ring.setPixelColor(c, led_ring.Color(0, 255, 0));  // Set pixel 'c' to value 'color'
       }
 
-      if(light)
+      if (light)
         led_ring.setPixelColor(LIGHT_LED, led_ring.Color(255, 0, 0));
-      
-      if(heater)
+
+      if (heater)
         led_ring.setPixelColor(HEATER_LED, led_ring.Color(255, 0, 0));
-      
-      if(fan)
+
+      if (fan)
         led_ring.setPixelColor(FAN_LED, led_ring.Color(255, 0, 0));
-      
-      if(misc)
+
+      if (misc)
         led_ring.setPixelColor(MISC_LED, led_ring.Color(255, 0, 0));
 
 
       led_ring.show();  // Update strip with new contents
-      delay(50);      // Pause for a moment
+      delay(50);        // Pause for a moment
     }
   }
-
 }
 
 

@@ -13,6 +13,7 @@ class LED_Controller
     void colorWipe(uint32_t color, int wait);
     void showSystemError(bool);
     void showSystemWorking(void);
+    void colourSwell(uint8_t r,uint8_t g,uint8_t b, int wait);
     /*Sets the given LEDs for the sockets animates LEDs
     light, heater, fan, misc
     */
