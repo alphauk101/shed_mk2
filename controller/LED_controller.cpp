@@ -80,6 +80,24 @@ void LED_Controller::showSystemWorking() {
   this->rainbowFade2White(3, 2, 1);
 }
 
+void LED_Controller::setShowCountdown(uint8_t countdown) {
+#define COUNT_RING_COLOUR led_ring.Color(255, 255, 255)
+#define BG_RING_COLOUR led_ring.Color(255, 0, 0)
+  led_ring.clear();
+  led_ring.setBrightness(255);
+  //led_ring.fill(RING_COLOUR, 1, led_ring.numPixels());
+  for (int i = 0; i < led_ring.numPixels(); i++) {  // For each pixel in strip...
+    led_ring.setPixelColor(i, BG_RING_COLOUR);         //  Set pixel's color (in RAM)
+                                                    //  Update strip to match                                 //  Pause for a moment
+  }
+
+  for (int j = 0; j < countdown; j++) {                    // For each pixel in strip...
+    led_ring.setPixelColor(j, COUNT_RING_COLOUR);  //  Set pixel's color (in RAM)
+                                                           //  Update strip to match                                 //  Pause for a moment
+  }
+  led_ring.show();
+}
+
 /*Sets the given LEDs for the sockets animates LEDs
     light, heater, fan, misc
     */
@@ -89,8 +107,8 @@ void LED_Controller::setShowSocketStatus(bool light, bool heater, bool fan, bool
 #define RING_COLOUR led_ring.Color(0, 255, 0)
 #define SKTON_COLOUR led_ring.Color(255, 0, 0)
 
-#define MAX_BRIGHTNESS   150
-#define INCREMENTS      1
+#define MAX_BRIGHTNESS 150
+#define INCREMENTS 1
 
   //return;
   for (int a = 0; a < MAX_BRIGHTNESS; a += INCREMENTS) {
@@ -113,7 +131,7 @@ void LED_Controller::setShowSocketStatus(bool light, bool heater, bool fan, bool
   }
 
 
-  for (int b = MAX_BRIGHTNESS; b > 0; b-= INCREMENTS) {
+  for (int b = MAX_BRIGHTNESS; b > 0; b -= INCREMENTS) {
     led_ring.clear();
     //led_ring.fill(RING_COLOUR, 1, led_ring.numPixels());
     for (int i = 0; i < led_ring.numPixels(); i++) {  // For each pixel in strip...

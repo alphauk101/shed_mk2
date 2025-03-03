@@ -11,6 +11,7 @@
 #define HEATER_OFF_TEMPERATURE        2
 
 #define DOOR_HOLD_OPEN_TIMER          120
+#define DOORCLOSE_TIMER_PERLED        10
 
 #define TEMPHUM_SAMPLE_TIME           10
 

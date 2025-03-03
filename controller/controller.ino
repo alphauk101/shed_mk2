@@ -1,4 +1,3 @@
-
 #include "LED_controller.h"          //LEDs (Neo pixel)
 #include "int_temphum_controller.h"  //Internal AHT25
 #include "ext_temp_controller.h"     //External DS18b20 temperature probe
@@ -23,6 +22,9 @@ typedef struct {
   bool misc_relay;
   bool fan_relay;
 
+  bool door_state;
+  uint8_t led_countdown;
+
   //Temperature data.
   float int_temperature;
   float int_humid;
@@ -41,8 +43,9 @@ typedef struct {
 
   bool ds_irq_triggered;
 } APP_LOGIC_DATA;
-
 static APP_LOGIC_DATA gApp_data;
+
+uint8_t leds_lit = 0;
 
 //Pixel LED controller.
 LED_Controller gLEDcontroller;
@@ -56,11 +59,14 @@ auto timer_1hz = timer_create_default();  // create a timer with default setting
 
 bool sys_tick_irq(void *) {
   gApp_data.sys_time++;
+  if ((gApp_data.sys_time % 10) == 0) {
+    if (gApp_data.led_countdown > 0) gApp_data.led_countdown--;
+  }
   return true;  // repeat? true
 }
 
 void door_sense_irq() {
-  check_door_state();
+  //check_door_state();
 }
 
 void setup() {
@@ -68,12 +74,14 @@ void setup() {
 
   //setup IRQ for door sense
   pinMode(DOOR_SENSE_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(DOOR_SENSE_PIN), door_sense_irq, CHANGE);
+  //attachInterrupt(digitalPinToInterrupt(DOOR_SENSE_PIN), door_sense_irq, CHANGE);
 
   gApp_data.heater_relay = false;
   gApp_data.light_relay = false;
   gApp_data.misc_relay = false;
   gApp_data.fan_relay = false;
+
+  gApp_data.door_state = false;
 
   gApp_data.ds_irq_triggered = false;
 
@@ -109,6 +117,7 @@ void setup() {
     //Show setup bad on leds
     gLEDcontroller.showSystemError(true);
 #endif
+
   } else {
 #ifndef DEV_MODE
     //Show setup ok on leds
@@ -119,7 +128,13 @@ void setup() {
   //Start the sys timer
   timer_1hz.every(1000, sys_tick_irq);
 }
-
+  
+/*If the system has woken up then this is called use this to reset timer values etc.*/
+static void system_woken_irq() {
+  gApp_data.environ_timer=0;//Force a environ resample
+  gDispManager.system_sleeping(false);
+  gApp_data.socket_timer = 0;
+}
 
 void loop() {
 
@@ -136,15 +151,19 @@ void loop() {
   check_door_state();
 
   if (gApp_data.system_sleeping == false) {
-    //bool light, bool heater, bool fan, bool misc
-    gLEDcontroller.setShowSocketStatus(gApp_data.light_relay,
-                                       gApp_data.heater_relay,
-                                       gApp_data.fan_relay,
-                                       gApp_data.misc_relay);
-
+    if (gApp_data.door_state == false) {
+      gLEDcontroller.setShowCountdown(gApp_data.led_countdown);
+    } else {
+      //bool light, bool heater, bool fan, bool misc
+      gLEDcontroller.setShowSocketStatus(gApp_data.light_relay,
+                                         gApp_data.heater_relay,
+                                         gApp_data.fan_relay,
+                                         gApp_data.misc_relay);
+    }
   } else {
-    if ((gApp_data.sys_time % SLEEP_BLINK_TIME) == 0)
+    if ((gApp_data.sys_time % SLEEP_BLINK_TIME) == 0) {
       gLEDcontroller.colourSwell(255, 0, 0, 20);
+    }
   }
 
 
@@ -226,6 +245,7 @@ void do_check_sockets() {
 }
 
 
+
 void check_door_state() {
 
   //if (gApp_data.ds_irq_triggered == true)
@@ -234,17 +254,28 @@ void check_door_state() {
 
   if (digitalRead(DOOR_SENSE_PIN) == DOOR_OPEN) {
 #ifdef DEV_MODE
-    //Serial.println("Door open");
+    Serial.println("Door open");
 #endif
+    //detect whether the system has transisitioned 
+    if (gApp_data.system_sleeping == true) {
+      system_woken_irq();
+    }
+
+    leds_lit = 0;
     //Make sure the light is turned on
     gApp_data.system_sleeping = false;
+    gApp_data.door_state = true;
     gApp_data.doorclosed_timer = (DOOR_HOLD_OPEN_TIMER + gApp_data.sys_time);
+    gApp_data.led_countdown = 11;
   } else {
 #ifdef DEV_MODE
-    //Serial.println("Door closed");
+    Serial.println("Door closed");
 #endif
+
+    gApp_data.door_state = false;
     if (gApp_data.doorclosed_timer < gApp_data.sys_time) {
       //system asleep
+      gApp_data.doorclosed_timer = 0;
       gApp_data.system_sleeping = true;
     }
   }

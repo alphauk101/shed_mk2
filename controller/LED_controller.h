@@ -14,6 +14,7 @@ class LED_Controller
     void showSystemError(bool);
     void showSystemWorking(void);
     void colourSwell(uint8_t r,uint8_t g,uint8_t b, int wait);
+    void setShowCountdown(uint8_t countdown);
     /*Sets the given LEDs for the sockets animates LEDs
     light, heater, fan, misc
     */
