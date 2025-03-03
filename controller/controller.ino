@@ -7,10 +7,11 @@
 #include "arduino-timer.h"
 #include "config.h"
 
-#define DEV_MODE  //If en, turns off pointless animas etc.
+//#define DEV_MODE  //If en, turns off pointless animas etc.
 
 #define SOCKET_CHECK_TIME_SEC 2
 
+#define SLEEP_BLINK_TIME 30
 
 #define DOOR_CLOSED LOW
 #define DOOR_OPEN HIGH
@@ -50,7 +51,6 @@ external_temp gExtTemperature;
 relay_manager gRelayManager;
 disp_manager gDispManager;
 
-
 auto timer_1hz = timer_create_default();  // create a timer with default settings
 
 
@@ -60,8 +60,7 @@ bool sys_tick_irq(void *) {
 }
 
 void door_sense_irq() {
-  //Serial.println("PING!");
-  //gApp_data.ds_irq_triggered = true;
+  check_door_state();
 }
 
 void setup() {
@@ -69,7 +68,7 @@ void setup() {
 
   //setup IRQ for door sense
   pinMode(DOOR_SENSE_PIN, INPUT);
-  //attachInterrupt(digitalPinToInterrupt(DOOR_SENSE_PIN), door_sense_irq, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(DOOR_SENSE_PIN), door_sense_irq, CHANGE);
 
   gApp_data.heater_relay = false;
   gApp_data.light_relay = false;
@@ -111,14 +110,15 @@ void setup() {
     gLEDcontroller.showSystemError(true);
 #endif
   } else {
+#ifndef DEV_MODE
     //Show setup ok on leds
     gLEDcontroller.showSystemWorking();
+#endif
   }
 
   //Start the sys timer
   timer_1hz.every(1000, sys_tick_irq);
 }
-
 
 
 void loop() {
@@ -131,7 +131,6 @@ void loop() {
 
   //All modules should be informed of the sleep state
   gDispManager.system_sleeping(gApp_data.system_sleeping);
-  timer_1hz.tick();  // tick the timer
 
   //Door sense logic
   check_door_state();
@@ -142,13 +141,14 @@ void loop() {
                                        gApp_data.heater_relay,
                                        gApp_data.fan_relay,
                                        gApp_data.misc_relay);
+
   } else {
-    if ((gApp_data.sys_time % 20) == 0)
+    if ((gApp_data.sys_time % SLEEP_BLINK_TIME) == 0)
       gLEDcontroller.colourSwell(255, 0, 0, 20);
   }
 
 
-#ifdef DEV_MODE
+#ifdef DEV_MODE_SYSTIME
   static uint64_t dev_timer;
   if (gApp_data.sys_time != dev_timer) {
     Serial.println("=======SYS TIMER======");
@@ -157,6 +157,9 @@ void loop() {
     Serial.println(" Secs");
   }
 #endif
+
+
+  timer_1hz.tick();  // tick the timer
 }
 
 
@@ -214,6 +217,7 @@ void do_check_sockets() {
     gApp_data.light_relay = (gApp_data.system_sleeping) ? false : true;
 
     // set the states
+
     gRelayManager.set_state_all(gApp_data.heater_relay,
                                 gApp_data.light_relay,
                                 gApp_data.fan_relay,

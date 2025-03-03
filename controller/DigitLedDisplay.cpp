@@ -61,6 +61,7 @@ void DigitLedDisplay::table(byte address, int val, boolean period) {
 }
 
 void DigitLedDisplay::write(volatile byte address, volatile byte data) {
+  delay(2); //Add a small delay as I believe the CS pin wasnt being changed quick enough.
   digitalWrite(CS_PIN, LOW);
   shiftOut(DIN_PIN, CLK_PIN, MSBFIRST, address);
   shiftOut(DIN_PIN, CLK_PIN, MSBFIRST, data);

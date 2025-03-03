@@ -4,8 +4,9 @@
 #include "IO_pins.h"
 #include <EEPROM.h>
 
-#define SANITY 0xA2
-#define NVM_START_ADDRESS 0
+#define SANITY                  0xA3
+#define NVM_START_ADDRESS       0
+#define DEFAULT_BRIGHTNESS      7
 
 typedef struct {
   uint8_t sanity;
@@ -26,10 +27,11 @@ DISPLAY_DATA g_display_data;
 /******************************************
 *         Macros and helpers
 ******************************************/
-#define INTTEMPHUM_DISPLAY display_1
-#define EXTTEMP_DISPLAY display_3
-#define HILO_INT_DISPLAY display_2
-#define HILO_EXT_DISPLAY display_4
+#define INTTEMPHUM_DISPLAY    display_4
+#define HILO_INT_DISPLAY      display_3
+#define EXTTEMP_DISPLAY       display_2
+#define HILO_EXT_DISPLAY      display_1
+
 
 #define CLEAR_INTTEMPHUM_DISP INTTEMPHUM_DISPLAY.clear()
 #define CLEAR_EXTTEMP_DISP EXTTEMP_DISPLAY.clear()
@@ -62,7 +64,7 @@ void disp_manager::disp_init() {
 
   INIT_ALL_DISPLAYS;
 
-  this->setBrightAllDisp(10);
+  this->setBrightAllDisp(DEFAULT_BRIGHTNESS);
 
   CLEAR_ALL_DISPLAYS;
 

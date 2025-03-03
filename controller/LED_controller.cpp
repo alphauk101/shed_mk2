@@ -45,7 +45,8 @@ void LED_Controller::colourSwell(uint8_t r, uint8_t g, uint8_t b, int wait) {
   for (int a = 0; a < 10; a++) {
     led_ring.clear();
     for (int i = 0; i < led_ring.numPixels(); i++) {       // For each pixel in strip...
-      led_ring.setPixelColor(i, led_ring.Color(r, g, b));  //  Set pixel's color (in RAM)                              //  Update strip to match                                 //  Pause for a moment
+      led_ring.setPixelColor(i, led_ring.Color(r, g, b));  //  Set pixel's color (in RAM)
+                                                           //  Update strip to match                                 //  Pause for a moment
     }
     //   Set all pixels in RAM to 0 (off)
     led_ring.setBrightness(a * 25);
@@ -76,48 +77,63 @@ void LED_Controller::showSystemError(bool forever) {
 }
 
 void LED_Controller::showSystemWorking() {
-  this->rainbowFade2White(3, 5, 1);
+  this->rainbowFade2White(3, 2, 1);
 }
-
 
 /*Sets the given LEDs for the sockets animates LEDs
     light, heater, fan, misc
     */
 void LED_Controller::setShowSocketStatus(bool light, bool heater, bool fan, bool misc) {
 
-  for (int a = 0; a < 3; a++) {    // Repeat 10 times...
-    for (int b = 0; b < 3; b++) {  //  'b' counts from 0 to 2...
-      led_ring.clear();            //   Set all pixels in RAM to 0 (off)
-      // 'c' counts up from 'b' to end of strip in steps of 3...
+#define WAIT_TIME 10
+#define RING_COLOUR led_ring.Color(0, 255, 0)
+#define SKTON_COLOUR led_ring.Color(255, 0, 0)
 
-      for (int i = 0; i < led_ring.numPixels(); i++) {
-        led_ring.setPixelColor(i, led_ring.Color(0, 50, 0));  // Set pixel 'c' to value 'color'
-      }
+#define MAX_BRIGHTNESS   150
+#define INCREMENTS      1
 
-      for (int c = b; c < led_ring.numPixels(); c += 3) {
-        led_ring.setPixelColor(c, led_ring.Color(0, 255, 0));  // Set pixel 'c' to value 'color'
-      }
-
-      if (light)
-        led_ring.setPixelColor(LIGHT_LED, led_ring.Color(255, 0, 0));
-
-      if (heater)
-        led_ring.setPixelColor(HEATER_LED, led_ring.Color(255, 0, 0));
-
-      if (fan)
-        led_ring.setPixelColor(FAN_LED, led_ring.Color(255, 0, 0));
-
-      if (misc)
-        led_ring.setPixelColor(MISC_LED, led_ring.Color(255, 0, 0));
-
-
-      led_ring.show();  // Update strip with new contents
-      delay(50);        // Pause for a moment
+  //return;
+  for (int a = 0; a < MAX_BRIGHTNESS; a += INCREMENTS) {
+    led_ring.clear();
+    //led_ring.fill(RING_COLOUR, 1, led_ring.numPixels());
+    for (int i = 0; i < led_ring.numPixels(); i++) {  // For each pixel in strip...
+      led_ring.setPixelColor(i, RING_COLOUR);         //  Set pixel's color (in RAM)
+                                                      //  Update strip to match                                 //  Pause for a moment
     }
+
+    if (light) led_ring.setPixelColor(LIGHT_LED, SKTON_COLOUR);
+    if (heater) led_ring.setPixelColor(HEATER_LED, SKTON_COLOUR);
+    if (fan) led_ring.setPixelColor(FAN_LED, SKTON_COLOUR);
+    if (misc) led_ring.setPixelColor(MISC_LED, SKTON_COLOUR);
+
+    //   Set all pixels in RAM to 0 (off)
+    led_ring.setBrightness(a);
+    led_ring.show();
+    delay(WAIT_TIME);  // Pause for a moment
   }
+
+
+  for (int b = MAX_BRIGHTNESS; b > 0; b-= INCREMENTS) {
+    led_ring.clear();
+    //led_ring.fill(RING_COLOUR, 1, led_ring.numPixels());
+    for (int i = 0; i < led_ring.numPixels(); i++) {  // For each pixel in strip...
+      led_ring.setPixelColor(i, RING_COLOUR);         //  Set pixel's color (in RAM)
+                                                      //  Update strip to match                                 //  Pause for a moment
+    }
+
+    if (light) led_ring.setPixelColor(LIGHT_LED, SKTON_COLOUR);
+    if (heater) led_ring.setPixelColor(HEATER_LED, SKTON_COLOUR);
+    if (fan) led_ring.setPixelColor(FAN_LED, SKTON_COLOUR);
+    if (misc) led_ring.setPixelColor(MISC_LED, SKTON_COLOUR);
+
+    //   Set all pixels in RAM to 0 (off)
+    led_ring.setBrightness(b);
+    led_ring.show();
+    delay(WAIT_TIME);  // Pause for a moment
+  }
+  led_ring.clear();
+  led_ring.show();
 }
-
-
 
 
 // Theater-marquee-style chasing lights. Pass in a color (32-bit value,
