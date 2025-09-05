@@ -1,11 +1,16 @@
+#include <SoftwareSerial.h>
+#include <ArduinoJson.h>
 #include "LED_controller.h"          //LEDs (Neo pixel)
 #include "int_temphum_controller.h"  //Internal AHT25
 #include "ext_temp_controller.h"     //External DS18b20 temperature probe
 #include "relay_manager.h"
 #include "disp_manager.h"
 #include "arduino-timer.h"
+#include "ATWIFI_driver.h"
 #include "config.h"
 
+//if defd sends data to server
+#define HTTP_SEND_METRICS
 //#define DEV_MODE  //If en, turns off pointless animas etc.
 
 #define SOCKET_CHECK_TIME_SEC 2
@@ -14,6 +19,15 @@
 
 #define DOOR_CLOSED LOW
 #define DOOR_OPEN HIGH
+
+//Enables the software serial for outputting messages
+#define DEBUG_SERIAL
+
+typedef struct {
+  String JSON_data;
+
+  bool data_waiting;
+} http_metrics_data;
 
 typedef struct {
   //Relay states
@@ -42,8 +56,11 @@ typedef struct {
   uint64_t doorclosed_timer;
 
   bool ds_irq_triggered;
+
+  http_metrics_data http_data;
 } APP_LOGIC_DATA;
 static APP_LOGIC_DATA gApp_data;
+static atwifi_driver g_network_module;
 
 uint8_t leds_lit = 0;
 
@@ -56,7 +73,11 @@ disp_manager gDispManager;
 
 auto timer_1hz = timer_create_default();  // create a timer with default settings
 
+#ifdef DEBUG_SERIAL
+SoftwareSerial mySerial(7, 11);  // RX, TX
+#endif
 
+static unsigned long ms_timer = 0;
 bool sys_tick_irq(void *) {
   gApp_data.sys_time++;
   if ((gApp_data.sys_time % 10) == 0) {
@@ -65,12 +86,60 @@ bool sys_tick_irq(void *) {
   return true;  // repeat? true
 }
 
+
+//Event handler for wifi
+static void wifi_eventhandler(int evt) {
+
+  switch (evt) {
+    case EVNT_SETUP_OK:
+#ifdef DEBUG_SERIAL
+    mySerial.println("Network setup - OK");
+#endif
+      break;
+    case EVNT_SETUP_FAIL:
+#ifdef DEBUG_SERIAL
+    mySerial.println("Network setup - FAILED");
+#endif
+      break;
+    case EVNT_CONNECTION_OK:
+#ifdef DEBUG_SERIAL
+    mySerial.println("Connection - OK - starting POST");
+#endif
+      //Connection is active, if we have some data -> SEND IT!!!!!
+      if (gApp_data.http_data.data_waiting) {
+         g_network_module.startHTTPPost(&gApp_data.http_data.JSON_data,
+                                       gApp_data.http_data.JSON_data.length());
+         gApp_data.http_data.data_waiting = false;
+      }
+      break;
+    case EVNT_CONNECTION_FAILED:
+#ifdef DEBUG_SERIAL
+    mySerial.println("Connection - FAILED");
+#endif
+      break;
+    case EVNT_OP_ABORTED_ERROR:
+#ifdef DEBUG_SERIAL
+    mySerial.println("Network operation - FAILED");
+#endif
+      break;
+    default:
+      break;
+  }
+}
+
+
 void door_sense_irq() {
   //check_door_state();
 }
 
 void setup() {
   bool int_temp_ok = true, ext_temp_ok = true;
+
+#ifdef DEBUG_SERIAL
+  // set the data rate for the SoftwareSerial port
+  mySerial.begin(9600);
+  mySerial.println("Debug on SW serial started.");
+#endif
 
   //setup IRQ for door sense
   pinMode(DOOR_SENSE_PIN, INPUT);
@@ -93,7 +162,7 @@ void setup() {
   gApp_data.socket_timer = 0;
 
   Serial.begin(115200);
-  Serial.println();
+  //Serial.println();
 
   gRelayManager.relay_init();
 
@@ -110,10 +179,6 @@ void setup() {
 
   if ((!int_temp_ok) || (!ext_temp_ok)) {
 #ifdef DEV_MODE
-    Serial.println(int_temp_ok);
-    Serial.println(ext_temp_ok);
-    //Alert user, system has failed to init!
-    Serial.println("--------- SETUP FAILED ---------");
     //Show setup bad on leds
     gLEDcontroller.showSystemError(true);
 #endif
@@ -125,13 +190,19 @@ void setup() {
 #endif
   }
 
+#ifdef HTTP_SEND_METRICS
+  g_network_module.init(wifi_eventhandler);
+  gApp_data.http_data.data_waiting = false;
+  gApp_data.http_data.JSON_data.reserve(200);
+#endif
+
   //Start the sys timer
   timer_1hz.every(1000, sys_tick_irq);
 }
-  
+
 /*If the system has woken up then this is called use this to reset timer values etc.*/
 static void system_woken_irq() {
-  gApp_data.environ_timer=0;//Force a environ resample
+  gApp_data.environ_timer = 0;  //Force a environ resample
   gDispManager.system_sleeping(false);
   gApp_data.socket_timer = 0;
 }
@@ -170,15 +241,25 @@ void loop() {
 #ifdef DEV_MODE_SYSTIME
   static uint64_t dev_timer;
   if (gApp_data.sys_time != dev_timer) {
-    Serial.println("=======SYS TIMER======");
+    // Serial.println("=======SYS TIMER======");
     dev_timer = gApp_data.sys_time;
-    Serial.print((int)gApp_data.sys_time);
-    Serial.println(" Secs");
+    //  Serial.print((int)gApp_data.sys_time);
+    //  Serial.println(" Secs");
   }
 #endif
 
 
+#ifdef HTTP_SEND_METRICS
+  g_network_module.task();
+#endif
+
+
   timer_1hz.tick();  // tick the timer
+}
+
+void serialEvent() {
+  //lock_in_error();
+  //g_network_module.serialEventHandler();
 }
 
 
@@ -196,20 +277,52 @@ void do_environment_sampling() {
     gDispManager.disp_environments(gApp_data.int_temperature,
                                    gApp_data.int_humid,
                                    gApp_data.ext_temperature);
-
+#ifdef HTTP_SEND_METRICS
+    do_http_metrics_operation();
+#endif
 
 #ifdef DEV_MODE
-    Serial.println("=======INTERNAL======");
-    Serial.print(gApp_data.int_temperature);
-    Serial.println(" C");
-    Serial.print(gApp_data.int_humid);
-    Serial.println(" %");
+    //Serial.println("=======INTERNAL======");
+    //Serial.print(gApp_data.int_temperature);
+    // Serial.println(" C");
+    // Serial.print(gApp_data.int_humid);
+    // Serial.println(" %");
 
-    Serial.println("=======EXTERNAL======");
-    Serial.print(gApp_data.ext_temperature);
-    Serial.println(" C");
+    //  Serial.println("=======EXTERNAL======");
+    //  Serial.print(gApp_data.ext_temperature);
+    // Serial.println(" C");
 #endif
   }
+}
+
+void do_http_metrics_operation() {
+  //gApp_data.http_data.JSON_data = get_json_packet();
+  gApp_data.http_data.data_waiting = true;
+
+  //This will result in an event
+  g_network_module.startGetConnectionStatus();
+  //Trigger a cnnection check, this in turn will trigger a data send if data available.
+}
+
+
+String get_json_packet() {
+  JsonDocument doc;
+
+  doc["intT"] = gIntTempHum.get_temp();
+  doc["intH"] = gIntTempHum.get_humd();
+  doc["extT"] = gExtTemperature.get_temp();
+  doc["door"] = gApp_data.door_state;
+  doc["fan"] = gApp_data.fan_relay;
+  doc["heater"] = gApp_data.fan_relay;
+
+  serializeJson(doc, gApp_data.http_data.JSON_data);
+
+#ifdef DEBUG_SERIAL
+  mySerial.print("JSON Data: ");
+  mySerial.println(gApp_data.http_data.JSON_data);
+#endif
+
+  return gApp_data.http_data.JSON_data;
 }
 
 
@@ -254,9 +367,9 @@ void check_door_state() {
 
   if (digitalRead(DOOR_SENSE_PIN) == DOOR_OPEN) {
 #ifdef DEV_MODE
-    Serial.println("Door open");
+    //Serial.println("Door open");
 #endif
-    //detect whether the system has transisitioned 
+    //detect whether the system has transisitioned
     if (gApp_data.system_sleeping == true) {
       system_woken_irq();
     }
@@ -269,7 +382,7 @@ void check_door_state() {
     gApp_data.led_countdown = 11;
   } else {
 #ifdef DEV_MODE
-    Serial.println("Door closed");
+    //Serial.println("Door closed");
 #endif
 
     gApp_data.door_state = false;
