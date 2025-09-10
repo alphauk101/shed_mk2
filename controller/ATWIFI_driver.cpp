@@ -2,7 +2,7 @@
 #include "ATWIFI_commands.h"
 #include <string.h>
 
-#define BLOCKING_MAX_WAIT 15000
+#define BLOCKING_MAX_WAIT 5000
 #define UART_BUFF_SIZE 128
 
 #define WD_TASK_TIMEOUT_MS 5000
@@ -137,13 +137,57 @@ bool atwifi_driver::blockWaitForCommand(const char* cmd_ptr) {
   while ((millis() < timeout) && (!cmd_found) && (g_wifidata.rx_cursor < UART_BUFF_SIZE)) {
     this->serialEventHandler();
     if (g_wifidata.rx_cursor > 1) {
-      tmpstr = String(g_wifidata.rx_buffer);
-      if (tmpstr.indexOf(cmd_ptr) != -1) {
+      const char* found = findSubstring(g_wifidata.rx_buffer, cmd_ptr);
+      //tmpstr = String(g_wifidata.rx_buffer);
+      //if (tmpstr.indexOf(cmd_ptr) != -1) {
+      if (found != nullptr) {
         cmd_found = true;
       }
+      //}
     }
   }
+
+  if (false) {
+    Serial.println("SB len: ");
+    Serial.println(g_wifidata.rx_cursor);
+    //tmpstr = String(g_wifidata.rx_buffer);
+    Serial.println(g_wifidata.rx_buffer);
+  }
+
   return cmd_found;
+}
+
+const char* atwifi_driver::findSubstring(const char* haystack, const char* needle) {
+  // An empty needle is always considered to be found at the beginning.
+  if (!needle || *needle == '\0') {
+    return haystack;
+  }
+
+  // You can't find a substring in a null string.
+  if (!haystack) {
+    return nullptr;
+  }
+
+  // This pointer will move through the haystack.
+  for (const char* h = haystack; *h != '\0'; ++h) {
+    const char* p1 = h;
+    const char* p2 = needle;
+
+    // Check for a match starting at the current position 'h'.
+    // This loop continues as long as characters match and we haven't reached the end of either string.
+    while (*p1 != '\0' && *p2 != '\0' && *p1 == *p2) {
+      p1++;
+      p2++;
+    }
+
+    // If the p2 pointer reached the end of the needle ('\0'),
+    // it means all characters in the needle were matched.
+    if (*p2 == '\0') {
+      return h;  // Return the starting address of the match.
+    }
+  }
+
+  return nullptr;  // No match was found after checking the entire haystack.
 }
 
 
@@ -508,8 +552,7 @@ void atwifi_driver::createHTTPPostCommand(unsigned int post_length) {
   //delay to allow the command to complete
   delay(50);
 
-  if (cmd_found) 
-  {
+  if (cmd_found) {
     this->sendPostBody();
     delay(AT_COMMAND_RESP_TIME_MS);
 
@@ -526,16 +569,26 @@ void atwifi_driver::createHTTPPostCommand(unsigned int post_length) {
 
 void atwifi_driver::sendPostBody() {
 
-  String cip_len = ATCMD_OPEN_DATASTREAM + String(g_wifidata.httpPOST_cmd_string.length()) + "\r\n ";
+  //String cip_len = ATCMD_OPEN_DATASTREAM + String(g_wifidata.httpPOST_cmd_string.length()) + "\r\n ";
   //String cip_len = ATCMD_OPEN_DATASTREAM + String(162) + "\r\n ";
-  char tmp[cip_len.length()];
-  cip_len.toCharArray(tmp, cip_len.length());
-  this->send_AT_command(tmp);
+  //char tmp[cip_len.length()];
+  //cip_len.toCharArray(tmp, cip_len.length());
+  
+  
+  char cip_len_buffer[32]; 
+
+  // 2. Get the length of the data you want to send.
+  int dataLength = g_wifidata.httpPOST_cmd_string.length();
+
+  // 3. Safely format the command string into the buffer.
+  snprintf(cip_len_buffer, sizeof(cip_len_buffer), "%s%d\r\n ", ATCMD_OPEN_DATASTREAM, dataLength);
+
+  this->send_AT_command(cip_len_buffer);
 
   delay(AT_COMMAND_RESP_TIME_MS);
 
   //send the post http data
-  for (int a = 0; a < g_wifidata.httpPOST_cmd_string.length(); a++) {
+  for (int a = 0; a < dataLength; a++) {
     Serial.write(g_wifidata.httpPOST_cmd_string[a]);
   }
 }

@@ -10,7 +10,9 @@
 #include "config.h"
 
 //if defd sends data to server
-#define HTTP_SEND_METRICS
+//#define HTTP_SEND_METRICS
+
+#define HTTP_JSON_MAX_SIZE 200
 //#define DEV_MODE  //If en, turns off pointless animas etc.
 
 #define SOCKET_CHECK_TIME_SEC 2
@@ -74,7 +76,7 @@ disp_manager gDispManager;
 auto timer_1hz = timer_create_default();  // create a timer with default settings
 
 #ifdef DEBUG_SERIAL
-SoftwareSerial mySerial(7, 11);  // RX, TX
+SoftwareSerial mySerial(10, 7);  // RX, TX
 #endif
 
 static unsigned long ms_timer = 0;
@@ -93,33 +95,33 @@ static void wifi_eventhandler(int evt) {
   switch (evt) {
     case EVNT_SETUP_OK:
 #ifdef DEBUG_SERIAL
-    mySerial.println("Network setup - OK");
+      mySerial.println("Network setup - OK");
 #endif
       break;
     case EVNT_SETUP_FAIL:
 #ifdef DEBUG_SERIAL
-    mySerial.println("Network setup - FAILED");
+      mySerial.println("Network setup - FAILED");
 #endif
       break;
     case EVNT_CONNECTION_OK:
 #ifdef DEBUG_SERIAL
-    mySerial.println("Connection - OK - starting POST");
+      mySerial.println("Connection - OK - starting POST");
 #endif
       //Connection is active, if we have some data -> SEND IT!!!!!
       if (gApp_data.http_data.data_waiting) {
-         g_network_module.startHTTPPost(&gApp_data.http_data.JSON_data,
+        g_network_module.startHTTPPost(&gApp_data.http_data.JSON_data,
                                        gApp_data.http_data.JSON_data.length());
-         gApp_data.http_data.data_waiting = false;
+        gApp_data.http_data.data_waiting = false;
       }
       break;
     case EVNT_CONNECTION_FAILED:
 #ifdef DEBUG_SERIAL
-    mySerial.println("Connection - FAILED");
+      mySerial.println("Connection - FAILED");
 #endif
       break;
     case EVNT_OP_ABORTED_ERROR:
 #ifdef DEBUG_SERIAL
-    mySerial.println("Network operation - FAILED");
+      mySerial.println("Network operation - FAILED");
 #endif
       break;
     default:
@@ -162,7 +164,10 @@ void setup() {
   gApp_data.socket_timer = 0;
 
   Serial.begin(115200);
-  //Serial.println();
+#ifdef HTTP_SEND_METRICS
+  gApp_data.http_data.JSON_data.reserve(HTTP_JSON_MAX_SIZE);
+  gApp_data.http_data.data_waiting = false;
+#endif
 
   gRelayManager.relay_init();
 
@@ -189,13 +194,9 @@ void setup() {
     gLEDcontroller.showSystemWorking();
 #endif
   }
-
 #ifdef HTTP_SEND_METRICS
   g_network_module.init(wifi_eventhandler);
-  gApp_data.http_data.data_waiting = false;
-  gApp_data.http_data.JSON_data.reserve(200);
 #endif
-
   //Start the sys timer
   timer_1hz.every(1000, sys_tick_irq);
 }
@@ -296,7 +297,7 @@ void do_environment_sampling() {
 }
 
 void do_http_metrics_operation() {
-  //gApp_data.http_data.JSON_data = get_json_packet();
+  create_json_packet();
   gApp_data.http_data.data_waiting = true;
 
   //This will result in an event
@@ -305,24 +306,25 @@ void do_http_metrics_operation() {
 }
 
 
-String get_json_packet() {
-  JsonDocument doc;
 
-  doc["intT"] = gIntTempHum.get_temp();
-  doc["intH"] = gIntTempHum.get_humd();
-  doc["extT"] = gExtTemperature.get_temp();
-  doc["door"] = gApp_data.door_state;
-  doc["fan"] = gApp_data.fan_relay;
-  doc["heater"] = gApp_data.fan_relay;
+StaticJsonDocument<HTTP_JSON_MAX_SIZE> doc;
+String output;
+void create_json_packet() {
+  //DynamicJsonDocument doc(200);  // <- 200 bytes in the heap
+
+  doc[F("intT")] = gApp_data.int_temperature;
+  doc[F("intH")] = gApp_data.int_humid;
+  doc[F("extT")] = gApp_data.ext_temperature;
+  doc[F("door")] = gApp_data.door_state;
 
   serializeJson(doc, gApp_data.http_data.JSON_data);
-
+  //output = "{hello}";
 #ifdef DEBUG_SERIAL
   mySerial.print("JSON Data: ");
   mySerial.println(gApp_data.http_data.JSON_data);
 #endif
 
-  return gApp_data.http_data.JSON_data;
+  //return output;
 }
 
 

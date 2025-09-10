@@ -37,6 +37,7 @@ private:
   void createHTTPPostCommand(unsigned int);
   void sendPostBody(void);
   bool blockWaitForCommand(const char* cmd_ptr);
+  const char* findSubstring(const char* haystack, const char* needle);
 protected:
 };
 
