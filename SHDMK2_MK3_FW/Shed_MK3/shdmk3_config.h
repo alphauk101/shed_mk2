@@ -1,6 +1,8 @@
 #ifndef __SHDMKR_CFG__
 #define __SHDMKR_CFG__
 
+#define DEBUG_ENVIRONMENTS  1
+
 
 /*
               Relays states
@@ -29,5 +31,14 @@ use the below defines to set the states so it is synchronised with the hardware.
 
 #define RELAY_MISC_OFF      RELAY_ON     //Spends most time in OFF
 #define RELAY_MISC_ON       RELAY_OFF     //Spends most time in OFF
+
+
+
+/*
+      APPLICATION TIME VALUES
+*/
+
+#define ENVIRONMENT_SAMPLE_TIME         5000
+
 
 #endif
