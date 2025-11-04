@@ -4,6 +4,12 @@
 #define DEBUG_ENVIRONMENTS  1
 
 
+
+/**********DEFAULT SCREEN MESSAGES********************/
+#define STARTUP_MESSAGE       "Shed mk3.... V0.1"
+
+/*****************************************************/
+
 /*
               Relays states
               =============
@@ -38,7 +44,8 @@ use the below defines to set the states so it is synchronised with the hardware.
       APPLICATION TIME VALUES
 */
 
-#define ENVIRONMENT_SAMPLE_TIME         5000
+#define ENVIRONMENT_SAMPLE_TIME           5000
+#define LED_DEFAULT_TIME                  5000
 
 
 #endif
