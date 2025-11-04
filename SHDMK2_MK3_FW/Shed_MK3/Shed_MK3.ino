@@ -52,20 +52,35 @@ void setup() {
   Serial.println("Shed MK3 - V0.1 ... Starting");
 
   g_screen_driver.init();
-  g_screen_driver.setStartUpMessage("Starting...");
-
+  g_screen_driver.setStartUpMessage();
+  delay(250);
   //setup ios
-  g_IOEXP_driver.poweron_setup();
-  //set default states
-  g_IOEXP_driver.set_relay_pins(RELAY_FAN_OFF, RELAY_DRYER_OFF, REALY_LIGHT_OFF, RELAY_MISC_OFF);
-  g_screen_driver.updateStartUpMessage("IO Expander... OK", "", "", "", "");
+  if (g_IOEXP_driver.poweron_setup()) {
 
+    //set default states
+    g_IOEXP_driver.set_relay_pins(RELAY_FAN_OFF, RELAY_DRYER_OFF, REALY_LIGHT_OFF, RELAY_MISC_OFF);
+    g_screen_driver.updateStartUpMessage("IO Expander... OK", "", "", "", "");
+  } else {
+    g_screen_driver.updateStartUpMessage("IO Expander... ERROR!", "", "", "", "");
+  }
+
+  delay(500);
 
   //Setup i2c temp hum sensor
-  g_intTempHum.init();
-  g_screen_driver.updateStartUpMessage("", "Internal Temp... OK", "Internal Humidity... OK", "", "");
-  g_extTemp.init();
-  g_screen_driver.updateStartUpMessage("", "", "", "External Temp... OK", "");
+  if (g_intTempHum.init()) {
+    g_screen_driver.updateStartUpMessage("", "Internal Temp... OK", "Internal Humidity... OK", "", "");
+  } else {
+    g_screen_driver.updateStartUpMessage("", "Internal Temp... ERROR", "Internal Humidity... ERROR", "", "");
+  }
+
+  delay(100);
+
+  if (g_extTemp.init()) {
+    g_screen_driver.updateStartUpMessage("", "", "", "External Temp... OK", "");
+  } else {
+    g_screen_driver.updateStartUpMessage("", "", "", "External Temp... ERROR", "");
+  }
+  delay(500);
 
   Serial.println("Shed MK3 - V0.1 ... complete");
   g_led_driver.init();

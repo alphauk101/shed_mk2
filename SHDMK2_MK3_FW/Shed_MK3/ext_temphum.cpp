@@ -9,8 +9,8 @@ uint8_t address[] = { 0x28, 0x3E, 0x99, 0x5C, 0x6, 0x0, 0x0, 0xBF };
 uint8_t selected;
 
 
-void EXTTEMP::init() {
-  selected = ds.select(address);
+bool EXTTEMP::init() {
+  return ds.select(address);
  // ds.setAlarms(LOW_ALARM, HIGH_ALARM);
 }
 

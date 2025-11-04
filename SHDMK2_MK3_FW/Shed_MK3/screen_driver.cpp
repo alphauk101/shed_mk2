@@ -5,8 +5,12 @@
 #include "shdmk3_config.h"
 #include <Fonts/FreeMonoBoldOblique12pt7b.h>
 #include <Fonts/FreeSans9pt7b.h>
+#include <Fonts/FreeSans12pt7b.h>
 
 //#define DEBUG_SCREEN
+
+#define TITLE_FONT &FreeSans12pt7b
+#define DEFAULT_FONT &FreeSans9pt7b
 
 // Use hardware SPI (on Uno, #13, #12, #11) and the above for CS/DC
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS_PIN, TFT_DC_PIN);
@@ -55,47 +59,53 @@ void SCRNDRV::setDefaultScreen() {
 
 void SCRNDRV::setStartUpMessage() {
   tft.fillScreen(ILI9341_WHITE);
-  tft.setCursor(50, 30);
+  tft.setCursor(15, 20);
   tft.setTextColor(ILI9341_BLACK);
-  tft.setFont(&FreeSans9pt7b);
-  //tft.setTextSize(3);
+  tft.setFont(TITLE_FONT);
   tft.println(STARTUP_MESSAGE);
-  tft.drawFastHLine(0, 320, 3, ILI9341_BLACK);
+  tft.setFont(DEFAULT_FONT);
+  tft.drawFastHLine(0, 40, 320, ILI9341_BLACK);
+  tft.drawFastHLine(0, 41, 320, ILI9341_BLACK);
 }
 
-
+#define FONT_HEIGHT 20
 void SCRNDRV::updateStartUpMessage(const std::string& IOexp_sts,           //IO expander status
                                    const std::string& intTemperature_sts,  //Internal temperature
                                    const std::string& intHumidity_sts,     //Internal humidity
                                    const std::string& extTemperature_sts,  //External temperature
                                    const std::string& led_driver) {        //LED driver
 
+
   //Position for IO status
+
+  int Y_cursor = 80;
+
   if (!IOexp_sts.empty()) {
-    tft.setCursor(50, 70);
+    tft.setCursor(50, Y_cursor);
     tft.println(IOexp_sts.c_str());
   }
-
+  Y_cursor += FONT_HEIGHT;
   //Position for int temp status
   if (!intTemperature_sts.empty()) {
-    tft.setCursor(50, 100);
+    tft.setCursor(50, Y_cursor);
     tft.println(intTemperature_sts.c_str());
   }
+  Y_cursor += FONT_HEIGHT;
   //Position for int hum status
   if (!intHumidity_sts.empty()) {
-    tft.setCursor(50, 120);
+    tft.setCursor(50, Y_cursor);
     tft.println(intHumidity_sts.c_str());
   }
-
+  Y_cursor += FONT_HEIGHT;
   //Position for ext temp status
   if (!extTemperature_sts.empty()) {
-    tft.setCursor(50, 170);
+    tft.setCursor(50, Y_cursor);
     tft.println(extTemperature_sts.c_str());
   }
-
+  Y_cursor += FONT_HEIGHT;
   //Position for LED
   if (!led_driver.empty()) {
-    tft.setCursor(50, 200);
+    tft.setCursor(50, Y_cursor);
     tft.println(led_driver.c_str());
   }
 }

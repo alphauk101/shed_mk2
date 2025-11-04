@@ -3,7 +3,7 @@
 
 class EXTTEMP {
 public:
-  void init(void);
+  bool init(void);
   float getTemp(void);
 };
 #endif

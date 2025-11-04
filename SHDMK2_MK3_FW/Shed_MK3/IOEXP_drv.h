@@ -10,7 +10,7 @@
 class IOEXP_DRV{
   public:
   IOEXP_DRV();
-  void poweron_setup(void);
+  bool poweron_setup(void);
   void set_relay_pins(bool R1, bool R2, bool R3, bool R4);
 
   private:

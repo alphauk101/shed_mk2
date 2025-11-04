@@ -11,12 +11,14 @@ IOEXP_DRV::IOEXP_DRV() {
 }
 
 
-void IOEXP_DRV::poweron_setup() {
-  // 0 = output
-  mcp.portMode(MCP23017Port::A, 0);
+bool IOEXP_DRV::poweron_setup() {
 
-  //Set all the relays to off
-  this->set_relay_pins(false,false,false,false);
+    // 0 = output
+    mcp.portMode(MCP23017Port::A, 0);
+    //Set all the relays to off
+    this->set_relay_pins(false, false, false, false);
+    return true;
+
 }
 
 
