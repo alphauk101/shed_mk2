@@ -58,14 +58,19 @@ void setup() {
   g_IOEXP_driver.poweron_setup();
   //set default states
   g_IOEXP_driver.set_relay_pins(RELAY_FAN_OFF, RELAY_DRYER_OFF, REALY_LIGHT_OFF, RELAY_MISC_OFF);
+  g_screen_driver.updateStartUpMessage("IO Expander... OK", "", "", "", "");
+
 
   //Setup i2c temp hum sensor
   g_intTempHum.init();
+  g_screen_driver.updateStartUpMessage("", "Internal Temp... OK", "Internal Humidity... OK", "", "");
   g_extTemp.init();
+  g_screen_driver.updateStartUpMessage("", "", "", "External Temp... OK", "");
 
   Serial.println("Shed MK3 - V0.1 ... complete");
   g_led_driver.init();
-  g_screen_driver.setStartUpMessage("Completed...");
+  g_screen_driver.updateStartUpMessage("", "", "", "", "LED Driver... OK");
+  //g_screen_driver.setStartUpMessage("Completed...");
 }
 
 static void get_environment_sensors() {

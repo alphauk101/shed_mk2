@@ -53,17 +53,54 @@ void SCRNDRV::setDefaultScreen() {
 }
 
 
-void SCRNDRV::setStartUpMessage(const std::string& s) {
+void SCRNDRV::setStartUpMessage() {
   tft.fillScreen(ILI9341_WHITE);
   tft.setCursor(50, 30);
   tft.setTextColor(ILI9341_BLACK);
   tft.setFont(&FreeSans9pt7b);
   //tft.setTextSize(3);
   tft.println(STARTUP_MESSAGE);
-
-  tft.setCursor(200, 50);
-  tft.println(s.c_str());
+  tft.drawFastHLine(0, 320, 3, ILI9341_BLACK);
 }
+
+
+void SCRNDRV::updateStartUpMessage(const std::string& IOexp_sts,           //IO expander status
+                                   const std::string& intTemperature_sts,  //Internal temperature
+                                   const std::string& intHumidity_sts,     //Internal humidity
+                                   const std::string& extTemperature_sts,  //External temperature
+                                   const std::string& led_driver) {        //LED driver
+
+  //Position for IO status
+  if (!IOexp_sts.empty()) {
+    tft.setCursor(50, 70);
+    tft.println(IOexp_sts.c_str());
+  }
+
+  //Position for int temp status
+  if (!intTemperature_sts.empty()) {
+    tft.setCursor(50, 100);
+    tft.println(intTemperature_sts.c_str());
+  }
+  //Position for int hum status
+  if (!intHumidity_sts.empty()) {
+    tft.setCursor(50, 120);
+    tft.println(intHumidity_sts.c_str());
+  }
+
+  //Position for ext temp status
+  if (!extTemperature_sts.empty()) {
+    tft.setCursor(50, 170);
+    tft.println(extTemperature_sts.c_str());
+  }
+
+  //Position for LED
+  if (!led_driver.empty()) {
+    tft.setCursor(50, 200);
+    tft.println(led_driver.c_str());
+  }
+}
+
+
 
 
 void SCRNDRV::task(bool sys_asleep) {

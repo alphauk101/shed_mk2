@@ -17,7 +17,14 @@ class SCRNDRV {
 public:
   void init(void);
   void task(bool);
-  void setStartUpMessage(const std::string&);
+  //Sets the default startup screen, waits for updates from below fxn.
+  void setStartUpMessage(void);
+  //Updates the screen with the relevant status from the main
+  void updateStartUpMessage(const std::string& IOexp_sts,          //IO expander status
+                                  const std::string& intTemperature_sts,  //Internal temperature
+                                  const std::string& intHumidity_sts,     //Internal humidity
+                                  const std::string& extTemperature_sts,  //External temperature
+                                  const std::string& led_driver);       //LED driver
 private:
   void doReset(void);
   void setDefaultScreen(void);
