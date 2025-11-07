@@ -1,6 +1,7 @@
 #ifndef __SCRN_DRV_H_
 #define __SCRN_DRV_H_
 #include <string>
+#include "shdmk3_config.h"
 
 #define TFT_DC_PIN 2
 #define TFT_CS_PIN 7
@@ -13,10 +14,17 @@
 #define BACKLIGHT_ON LOW
 #define BACKLIGHT_OFF HIGH
 
+typedef enum{
+  not_connected,
+  signal_poor,
+  sginal_ok,
+  signal_good,
+}networkState_icon;
+
 class SCRNDRV {
 public:
   void init(void);
-  void task(bool);
+  void task(bool , SHED_APP *);//Allows exposure to the environment data
   //Sets the default startup screen, waits for updates from below fxn.
   void setStartUpMessage(void);
   //Updates the screen with the relevant status from the main
@@ -25,9 +33,17 @@ public:
                                   const std::string& intHumidity_sts,     //Internal humidity
                                   const std::string& extTemperature_sts,  //External temperature
                                   const std::string& led_driver);       //LED driver
+  void setNetworkState(networkState_icon);
 private:
   void doReset(void);
-  void setDefaultScreen(void);
+  void setDefaultScreenLayout(void);
+  void setNetworkIcon(void);
+
+  //Sets the given screen content layout
+  void SCRNDRV::SCREENLAYOUT_internalTemp(SHED_APP *);
+  void SCRNDRV::SCREENLAYOUT_internalHumd(SHED_APP *);
+  void SCRNDRV::SCREENLAYOUT_ExternalTemp(SHED_APP *);
+  void SCRNDRV::SCREENLAYOUT_DoorStatus(SHED_APP *);
 };
 
 #endif

@@ -3,8 +3,6 @@
 
 #define DEBUG_ENVIRONMENTS  1
 
-
-
 /**********DEFAULT SCREEN MESSAGES********************/
 #define STARTUP_MESSAGE       "Shed mk3.... V0.1"
 
@@ -47,5 +45,21 @@ use the below defines to set the states so it is synchronised with the hardware.
 #define ENVIRONMENT_SAMPLE_TIME           5000
 #define LED_DEFAULT_TIME                  5000
 
+
+
+typedef struct {
+  unsigned long environment_timer = ENVIRONMENT_SAMPLE_TIME;
+  unsigned long led_timer = LED_DEFAULT_TIME;
+} APP_TIMERS;
+
+typedef struct {
+  float internal_temp = 0;
+  float internal_humidity = 0;
+  float external_temp = 0;
+
+  bool system_asleep = false;  //If sleeping, all modules should be in lowest power mode.
+
+  APP_TIMERS app_timers;
+} SHED_APP;
 
 #endif

@@ -17,21 +17,6 @@ EXTTEMP g_extTemp;
 SHDPIXEL g_led_driver;
 SCRNDRV g_screen_driver;
 
-typedef struct {
-  unsigned long environment_timer = ENVIRONMENT_SAMPLE_TIME;
-  unsigned long led_timer = LED_DEFAULT_TIME;
-} APP_TIMERS;
-
-typedef struct {
-  float internal_temp = 0;
-  float internal_humidity = 0;
-  float external_temp = 0;
-
-  bool system_asleep = false;  //If sleeping, all modules should be in lowest power mode.
-
-  APP_TIMERS app_timers;
-} SHED_APP;
-
 //Single point of truth for app data/manager
 static SHED_APP g_shed_data;
 
@@ -80,12 +65,16 @@ void setup() {
   } else {
     g_screen_driver.updateStartUpMessage("", "", "", "External Temp... ERROR", "");
   }
-  delay(500);
+  delay(100);
 
   Serial.println("Shed MK3 - V0.1 ... complete");
   g_led_driver.init();
   g_screen_driver.updateStartUpMessage("", "", "", "", "LED Driver... OK");
   //g_screen_driver.setStartUpMessage("Completed...");
+
+  //Set the startup network state
+  g_screen_driver.setNetworkState(networkState_icon::not_connected);
+  delay(500);
 }
 
 static void get_environment_sensors() {
