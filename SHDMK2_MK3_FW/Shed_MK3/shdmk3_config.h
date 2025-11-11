@@ -11,7 +11,7 @@
 
 /**********DEFAULT SCREEN MESSAGES********************/
 #define STARTUP_MESSAGE "Shed mk3.... V0.1"
-
+#define SCREEN_CHANGE_TIMEOUT             10000 //change between screen
 /*****************************************************/
 
 /*

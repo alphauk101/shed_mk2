@@ -47,11 +47,12 @@ private:
   void setDefaultScreenLayout(const std::string&);
   void setNetworkIcon(void);
   void fadeBackLight(bool);
+  void changeSreen(void);
   //Sets the given screen content layout
   void SCREENLAYOUT_internalTemp(SHED_APP*);
   void SCREENLAYOUT_internalHumd(SHED_APP*);
   void SCREENLAYOUT_ExternalTemp(SHED_APP*);
-  void SCREENLAYOUT_DoorStatus(SHED_APP*);
+  void SCREENLAYOUT_Information(SHED_APP*);
   void clearDynamicSection(uint16_t);
   void showPowerStates(void);
 };

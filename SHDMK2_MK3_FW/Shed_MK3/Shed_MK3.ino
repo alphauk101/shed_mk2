@@ -40,7 +40,7 @@ static void RTC_callback_event(int evt) {
   }
 }
 
-#define NO_DELAY_STARTUP
+//#define NO_DELAY_STARTUP
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);

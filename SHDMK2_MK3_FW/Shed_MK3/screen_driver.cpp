@@ -1,3 +1,4 @@
+#include "api/HardwareSPI.h"
 #include "screen_driver.h"
 #include "SPI.h"
 #include "Adafruit_GFX.h"
@@ -10,7 +11,11 @@
 #include <Fonts/FreeSans24pt7b.h>
 
 //#define DEBUG_SCREEN
+#define MCR_MAND_TASK_FXN \
+  this->showPowerStates(); \
+  this->setNetworkIcon()
 
+#define SPI_SPEED  8000000
 
 #define TITLE_FONT &FreeSans12pt7b
 #define DEFAULT_FONT &FreeSans9pt7b
@@ -61,6 +66,7 @@ typedef struct {
   currentScreen current_screen;
   POWER_STATES power_states;
   bool update_power_states;
+  UL_TIMER_t screen_change_timer;
 } SCREEN_DATA;
 static SCREEN_DATA g_screen_data;
 
@@ -71,7 +77,7 @@ void SCRNDRV::init() {
 
   digitalWrite(BACKLIGHT_PIN, BACKLIGHT_ON);
   digitalWrite(RESET_PIN, HIGH);
-
+  g_screen_data.screen_change_timer = 0;
   //Set default data.
   g_screen_data.current_network_icon = signal_none;  //ensure this is not valid so it gets overwritten
   //Set to un connected
@@ -82,8 +88,7 @@ void SCRNDRV::init() {
 
   //Reset the screen to ensure ready state
   this->doReset();
-
-  tft.begin();
+  tft.begin(SPI_SPEED);
   this->fadeBackLight(true);
   //this->setStartUpMessage();
 
@@ -297,9 +302,9 @@ void SCRNDRV::setPowerStates(bool light, bool fan, bool blower, bool misc) {
 }
 
 
-#define PS_BGCOLOUR_ON  ILI9341_GREEN
+#define PS_BGCOLOUR_ON ILI9341_GREEN
 #define PS_FONTCOL_ON ILI9341_BLACK
-#define PS_BGCOLOUR_OFF  ILI9341_RED
+#define PS_BGCOLOUR_OFF ILI9341_RED
 #define PS_FONTCOL_OFF ILI9341_WHITE
 void SCRNDRV::showPowerStates() {
 
@@ -309,11 +314,11 @@ void SCRNDRV::showPowerStates() {
 
     if (g_screen_data.power_states.lights) {
       //draw green
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT+2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
       tft.setTextColor(PS_FONTCOL_ON);
 
     } else {
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT+2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
       tft.setTextColor(PS_FONTCOL_OFF);
     }
     tft.setCursor(LIGHT_TEXT_CURSOR_X, LIGHT_TEXT_CURSOR_Y);
@@ -322,10 +327,10 @@ void SCRNDRV::showPowerStates() {
 
     if (g_screen_data.power_states.fan) {
       //draw green
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 1)+2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER-2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 1) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
       tft.setTextColor(PS_FONTCOL_ON);
     } else {
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 1)+2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER-2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 1) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
       tft.setTextColor(PS_FONTCOL_OFF);
     }
     tft.setCursor(FAN_TEXT_CURSOR_X, FAN_TEXT_CURSOR_Y);
@@ -334,10 +339,10 @@ void SCRNDRV::showPowerStates() {
 
     if (g_screen_data.power_states.blower) {
       //draw green
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 2)+2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER-2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 2) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
       tft.setTextColor(PS_FONTCOL_ON);
     } else {
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 2)+2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER-2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 2) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
       tft.setTextColor(PS_FONTCOL_OFF);
     }
     tft.setCursor(BLOWER_TEXT_CURSOR_X, BLOWER_TEXT_CURSOR_Y);
@@ -346,10 +351,10 @@ void SCRNDRV::showPowerStates() {
 
     if (g_screen_data.power_states.misc) {
       tft.setTextColor(PS_FONTCOL_ON);
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 3)+2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER-2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 3) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
     } else {
       tft.setTextColor(PS_FONTCOL_OFF);
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 3)+2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER-2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 3) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
     }
     tft.setCursor(MISC_TEXT_CURSOR_X, MISC_TEXT_CURSOR_Y);
     tft.print("Misc");
@@ -387,30 +392,84 @@ void SCRNDRV::setNetworkIcon() {
   }
 }
 
-
+float tmp_inttemp = 0;
+float tmp_exttemp = 0;
 void SCRNDRV::task(bool sys_aleep, SHED_APP* shd_data) {
 
+  //check if the timer has elapsed and change the screen accordingly.
+  unsigned long current_time = millis();
+  if ((current_time - g_screen_data.screen_change_timer) > SCREEN_CHANGE_TIMEOUT) {
+    //change screen time
+    this->changeSreen();
+
+    //reset screen dependant flags/vars here
+    tmp_inttemp = 0;
+    tmp_exttemp = 0;
+    g_screen_data.update_power_states = true;
+    g_screen_data.current_network_icon = signal_none;
+  }
+
+  //now display the screen based on nthe selected layout
 
 
+  switch (g_screen_data.current_screen) {
+    case CS_intTemperature:
+      this->SCREENLAYOUT_internalTemp(shd_data);
+      break;
+    case CS_extTemperature:
+      this->SCREENLAYOUT_ExternalTemp(shd_data);
+      break;
+    case CS_intHumidity:
+      this->SCREENLAYOUT_internalHumd(shd_data);
+      break;
+    case CS_DoorState:
 
-  //If asleep make sure the screen B Light is off for highest power save.
-  this->SCREENLAYOUT_internalTemp(shd_data);
+      break;
+    default:
+      break;
+  }
 }
 
 
-/*********Below are the different screen layouts**************/
-float tmp_inttemp = 0;
-void SCRNDRV::SCREENLAYOUT_internalTemp(SHED_APP* shd_data) {
-
-  //Check whether this is the first time this screen is being drawn, if so,
-  //then only update the values.    FreeSans24pt7b
-  if (g_screen_data.current_screen != CS_intTemperature) {
-    //set the screen
-    this->setDefaultScreenLayout("Indoor Temperature");
-
-
-    MCR_SET_CURRENT_SCREEN(CS_intTemperature);
+/*
+Changes the screen type to next screen - sets up the staic compoents for the 
+new screen layout*/
+void SCRNDRV::changeSreen() {
+  switch (g_screen_data.current_screen) {
+    case CS_intTemperature:
+      MCR_SET_CURRENT_SCREEN(CS_extTemperature);
+      this->setDefaultScreenLayout("Outdoor Temperature");
+      break;
+    case CS_extTemperature:
+      MCR_SET_CURRENT_SCREEN(CS_intHumidity);
+      this->setDefaultScreenLayout("Indoor Humidity");
+      break;
+    case CS_intHumidity:
+      MCR_SET_CURRENT_SCREEN(CS_DoorState);
+      this->setDefaultScreenLayout("Information");
+      break;
+    case CS_DoorState:
+      MCR_SET_CURRENT_SCREEN(CS_intTemperature);
+      this->setDefaultScreenLayout("Indoor Temperature");
+      break;
+    default:
+      //everything ..defaults to indoor temp
+      MCR_SET_CURRENT_SCREEN(CS_intTemperature);
+      this->setDefaultScreenLayout("Indoor Temperature");
+      break;
   }
+  //reset the timer from here to allow this fxn from other places
+  g_screen_data.screen_change_timer = millis();
+}
+
+
+
+
+
+
+/*********Below are the different screen layouts**************/
+
+void SCRNDRV::SCREENLAYOUT_internalTemp(SHED_APP* shd_data) {
 
   if (tmp_inttemp != shd_data->environmentals.internal_temp) {
     tmp_inttemp = shd_data->environmentals.internal_temp;
@@ -438,11 +497,8 @@ void SCRNDRV::SCREENLAYOUT_internalTemp(SHED_APP* shd_data) {
     tft.print("c");
   }
 
-
-
   //do additional screen tasks here to avoid overwriting
-  this->showPowerStates();
-  this->setNetworkIcon();  //Update this if necessary
+  MCR_MAND_TASK_FXN;
 }
 
 void SCRNDRV::SCREENLAYOUT_internalHumd(SHED_APP* shd_data) {
@@ -450,25 +506,49 @@ void SCRNDRV::SCREENLAYOUT_internalHumd(SHED_APP* shd_data) {
 
 
   //do additional screen tasks here to avoid overwriting
-  this->showPowerStates();
-  this->setNetworkIcon();  //Update this if necessary
+  MCR_MAND_TASK_FXN;
 }
 
 
 void SCRNDRV::SCREENLAYOUT_ExternalTemp(SHED_APP* shd_data) {
 
+  if (tmp_exttemp != shd_data->environmentals.external_temp) {
+    tmp_exttemp = shd_data->environmentals.external_temp;
+    //Clears the dynamic part of the active screen
+    this->clearDynamicSection(ILI9341_WHITE);
+
+    tft.setTextColor(ILI9341_BLACK);
+    tft.setTextSize(2);
+    tft.setFont(HUGE_FONT);
+    tft.setCursor(10, 140);
+    tft.print(shd_data->environmentals.external_temp);
+    tft.print("c");
+
+    tft.setTextSize(0);
+    tft.setFont(DEFAULT_FONT);
+    //Set the highest temperature
+    tft.setCursor(10, 200);
+    tft.print("Max: ");
+    tft.print(shd_data->environmentals.external_temp_max);
+    tft.print("c");
+
+    tft.setCursor(200, 200);
+    tft.print("Min: ");
+    tft.print(shd_data->environmentals.external_temp_min);
+    tft.print("c");
+  }
+
+
 
 
   //do additional screen tasks here to avoid overwriting
-  this->showPowerStates();
-  this->setNetworkIcon();  //Update this if necessary
+  MCR_MAND_TASK_FXN;
 }
 
-void SCRNDRV::SCREENLAYOUT_DoorStatus(SHED_APP* shd_data) {
+void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data) {
 
 
 
   //do additional screen tasks here to avoid overwriting
-  this->showPowerStates();
-  this->setNetworkIcon();  //Update this if necessary
+  MCR_MAND_TASK_FXN;
 }
