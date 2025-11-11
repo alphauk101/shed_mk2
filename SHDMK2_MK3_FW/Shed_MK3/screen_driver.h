@@ -8,43 +8,56 @@
 #define RESET_PIN 3
 #define BACKLIGHT_PIN 1
 
-#define DEFAULT_ORIENTATION   3
+#define DEFAULT_ORIENTATION 3
 
 
 #define BACKLIGHT_ON LOW
 #define BACKLIGHT_OFF HIGH
 
-typedef enum{
-  not_connected,
-  signal_poor,
-  sginal_ok,
-  signal_good,
-}networkState_icon;
+
+  typedef enum {
+    not_connected,
+    signal_bad,
+    signal_awful,
+    signal_ok,
+    signal_good,
+    signal_none,
+  } networkState_icon;
+
 
 class SCRNDRV {
 public:
   void init(void);
-  void task(bool , SHED_APP *);//Allows exposure to the environment data
+  void task(bool, SHED_APP*);  //Allows exposure to the environment data
   //Sets the default startup screen, waits for updates from below fxn.
   void setStartUpMessage(void);
   //Updates the screen with the relevant status from the main
-  void updateStartUpMessage(const std::string& IOexp_sts,          //IO expander status
-                                  const std::string& intTemperature_sts,  //Internal temperature
-                                  const std::string& intHumidity_sts,     //Internal humidity
-                                  const std::string& extTemperature_sts,  //External temperature
-                                  const std::string& led_driver);       //LED driver
+  void updateStartUpMessage(const std::string& IOexp_sts,           //IO expander status
+                            const std::string& intTemperature_sts,  //Internal temperature
+                            const std::string& intHumidity_sts,     //Internal humidity
+                            const std::string& extTemperature_sts,  //External temperature
+                            const std::string& led_driver,
+                            const std::string& wifi_status,
+                            const std::string& rtc_Status);
   void setNetworkState(networkState_icon);
+  void setShowNetConnect(void);
+  void setPowerStates(bool light, bool fan, bool blower, bool misc);
 private:
   void doReset(void);
-  void setDefaultScreenLayout(void);
+  void setDefaultScreenLayout(const std::string&);
   void setNetworkIcon(void);
-
+  void fadeBackLight(bool);
   //Sets the given screen content layout
-  void SCRNDRV::SCREENLAYOUT_internalTemp(SHED_APP *);
-  void SCRNDRV::SCREENLAYOUT_internalHumd(SHED_APP *);
-  void SCRNDRV::SCREENLAYOUT_ExternalTemp(SHED_APP *);
-  void SCRNDRV::SCREENLAYOUT_DoorStatus(SHED_APP *);
+  void SCREENLAYOUT_internalTemp(SHED_APP*);
+  void SCREENLAYOUT_internalHumd(SHED_APP*);
+  void SCREENLAYOUT_ExternalTemp(SHED_APP*);
+  void SCREENLAYOUT_DoorStatus(SHED_APP*);
+  void clearDynamicSection(uint16_t);
+  void showPowerStates(void);
 };
+
+
+
 
 #endif
 

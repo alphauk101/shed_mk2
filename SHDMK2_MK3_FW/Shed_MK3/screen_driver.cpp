@@ -3,6 +3,7 @@
 #include "Adafruit_GFX.h"
 #include "Adafruit_ILI9341.h"
 #include "shdmk3_config.h"
+#include "screen_grfx.h"
 #include <Fonts/FreeMonoBoldOblique12pt7b.h>
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSans12pt7b.h>
@@ -10,49 +11,81 @@
 
 //#define DEBUG_SCREEN
 
+
 #define TITLE_FONT &FreeSans12pt7b
 #define DEFAULT_FONT &FreeSans9pt7b
+#define HUGE_FONT &FreeSans24pt7b
+
+//Position for the text in the power states boxes
+#define LIGHT_TEXT_CURSOR_X 15
+#define LIGHT_TEXT_CURSOR_Y 230
+#define FAN_TEXT_CURSOR_X 105
+#define FAN_TEXT_CURSOR_Y LIGHT_TEXT_CURSOR_Y
+#define BLOWER_TEXT_CURSOR_X 180
+#define BLOWER_TEXT_CURSOR_Y LIGHT_TEXT_CURSOR_Y
+#define MISC_TEXT_CURSOR_X 260
+#define MISC_TEXT_CURSOR_Y LIGHT_TEXT_CURSOR_Y
+
+
+
+#define MCR_SET_DEF_TITLE_POSITION tft.setCursor(10, 20)
+
+#define SCREEN_HEIGHT 240
+#define SCREEN_WIDTH 320
+
+#define HORZ_NETWORK_DIVIDER 275  //Move the network section horizontal divider here
+#define VERTICAL_TITLE_HEIGHT 30  //Title vertical height (everything should adjust auto)
+#define VERITCAL_BASE_HEIGHT (SCREEN_HEIGHT - 30)
+#define NETWORK_ICOM_HORZ 280
+
+#define HORZ_PWRSTS_SECTION_WIDTH_DIVIDER 80  //Power status section across the bottom of the screen, should be factor of 320
 
 // Use hardware SPI (on Uno, #13, #12, #11) and the above for CS/DC
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS_PIN, TFT_DC_PIN);
 
-#define MCR_SET_CURRENT_SCREEN(X)     g_screen_data.current_screen=X
+#define MCR_SET_CURRENT_SCREEN(X) g_screen_data.current_screen = X
 
-typedef enum{
+typedef enum {
   CS_none,
   CS_startup,  //Start up message screen
   CS_extTemperature,
   CS_intTemperature,
   CS_intHumidity,
   CS_DoorState,
-}currentScreen;
+} currentScreen;
 
 
 typedef struct {
-  networkState_icon   network_icon;
-  currentScreen       current_screen;
-
+  networkState_icon current_network_icon;
+  networkState_icon update_network_icon;
+  currentScreen current_screen;
+  POWER_STATES power_states;
+  bool update_power_states;
 } SCREEN_DATA;
 static SCREEN_DATA g_screen_data;
 
 void SCRNDRV::init() {
   //setup reset and backlight pins.
   pinMode(BACKLIGHT_PIN, OUTPUT);
-  pinMode(RESET_PIN, OUTPUT);
+
 
   digitalWrite(BACKLIGHT_PIN, BACKLIGHT_ON);
   digitalWrite(RESET_PIN, HIGH);
 
   //Set default data.
-  g_screen_data.network_icon = not_connected;
+  g_screen_data.current_network_icon = signal_none;  //ensure this is not valid so it gets overwritten
+  //Set to un connected
+  this->setNetworkState(not_connected);
   g_screen_data.current_screen = CS_none;
+
+  g_screen_data.update_power_states = true;
 
   //Reset the screen to ensure ready state
   this->doReset();
 
   tft.begin();
-
-  this->setStartUpMessage();
+  this->fadeBackLight(true);
+  //this->setStartUpMessage();
 
 #ifdef DEBUG_SCREEN
   // read diagnostics (optional but can help debug problems)
@@ -85,20 +118,14 @@ void SCRNDRV::setStartUpMessage() {
 
   //No need to check previous screen, just populate.
   g_screen_data.current_screen = CS_startup;
-
-  tft.setRotation(DEFAULT_ORIENTATION);
-  tft.fillScreen(ILI9341_WHITE);
-  tft.setCursor(15, 20);
-  tft.setTextColor(ILI9341_BLACK);
-  tft.setFont(TITLE_FONT);
-  tft.println(STARTUP_MESSAGE);
-  tft.setFont(DEFAULT_FONT);
-  tft.drawFastHLine(0, 40, 320, ILI9341_BLACK);
-  tft.drawFastHLine(0, 41, 320, ILI9341_BLACK);
+  this->setDefaultScreenLayout(STARTUP_MESSAGE);
+  this->setNetworkIcon();  //Update this if necessary
 }
 
 
-#define FONT_HEIGHT 20
+
+#define FONT_HEIGHT 22
+#define TEXT_START_X 30
 /*
 This creates the startup screen, this is only called on startup
 */
@@ -106,74 +133,257 @@ void SCRNDRV::updateStartUpMessage(const std::string& IOexp_sts,           //IO 
                                    const std::string& intTemperature_sts,  //Internal temperature
                                    const std::string& intHumidity_sts,     //Internal humidity
                                    const std::string& extTemperature_sts,  //External temperature
-                                   const std::string& led_driver) {        //LED driver
+                                   const std::string& led_driver,
+                                   const std::string& wifi_status,
+                                   const std::string& rtc_status) {  //LED driver
 
 
   //Position for IO status
-  int Y_cursor = 80;
+  int Y_cursor = 65;
   if (!IOexp_sts.empty()) {
-    tft.setCursor(50, Y_cursor);
+    tft.setCursor(TEXT_START_X, Y_cursor);
     tft.println(IOexp_sts.c_str());
   }
   Y_cursor += FONT_HEIGHT;
   //Position for int temp status
   if (!intTemperature_sts.empty()) {
-    tft.setCursor(50, Y_cursor);
+    tft.setCursor(TEXT_START_X, Y_cursor);
     tft.println(intTemperature_sts.c_str());
   }
   Y_cursor += FONT_HEIGHT;
   //Position for int hum status
   if (!intHumidity_sts.empty()) {
-    tft.setCursor(50, Y_cursor);
+    tft.setCursor(TEXT_START_X, Y_cursor);
     tft.println(intHumidity_sts.c_str());
   }
   Y_cursor += FONT_HEIGHT;
   //Position for ext temp status
   if (!extTemperature_sts.empty()) {
-    tft.setCursor(50, Y_cursor);
+    tft.setCursor(TEXT_START_X, Y_cursor);
     tft.println(extTemperature_sts.c_str());
   }
   Y_cursor += FONT_HEIGHT;
   //Position for LED
   if (!led_driver.empty()) {
-    tft.setCursor(50, Y_cursor);
+    tft.setCursor(TEXT_START_X, Y_cursor);
     tft.println(led_driver.c_str());
+  }
+
+  Y_cursor += FONT_HEIGHT;
+  //Position for LED
+  if (!wifi_status.empty()) {
+    tft.setCursor(TEXT_START_X, Y_cursor);
+    tft.println(wifi_status.c_str());
+  }
+  Y_cursor += FONT_HEIGHT;
+  //Position for LED
+  if (!rtc_status.empty()) {
+    tft.setCursor(TEXT_START_X, Y_cursor);
+    tft.println(rtc_status.c_str());
+  }
+}
+
+void SCRNDRV::fadeBackLight(bool dir) {
+
+  // This 'for' loop starts with brightness at 0,
+  // and keeps looping as long as brightness is less than or equal to 255.
+  // In each loop, it increases brightness by 1.
+  for (int brightness = 0; brightness <= 255; brightness++) {
+
+    // Set the LED's brightness to the current value
+    if (dir) {
+      analogWrite(BACKLIGHT_PIN, (255 - brightness));
+    } else {
+      analogWrite(BACKLIGHT_PIN, brightness);
+    }
+    // This delay is crucial. It pauses the code for 10 milliseconds
+    // so your eye can perceive the change in brightness.
+    // Try changing this value to speed up or slow down the fade.
+    delay(10);
   }
 }
 
 void SCRNDRV::setNetworkState(networkState_icon state) {
-  g_screen_data.network_icon = state;
+  g_screen_data.update_network_icon = state;
 }
+
+
 
 /*This sets the default screen layout but does not set the 
 main content as it may change*/
-void SCRNDRV::setDefaultScreenLayout() {
+void SCRNDRV::setDefaultScreenLayout(const std::string& title_str) {
   tft.fillScreen(ILI9341_WHITE);
   tft.setRotation(DEFAULT_ORIENTATION);
   //Draw the top line divider
-  tft.drawFastHLine(0, 40, 320, ILI9341_BLACK);
-  tft.drawFastHLine(0, 41, 320, ILI9341_BLACK);
+  tft.drawFastHLine(0, VERTICAL_TITLE_HEIGHT, 320, ILI9341_BLACK);
+  tft.drawFastHLine(0, VERTICAL_TITLE_HEIGHT + 1, 320, ILI9341_BLACK);
   //Draw the container for the network state
-  tft.drawFastHLine(41, 300, 20, ILI9341_BLACK);
-  tft.drawFastHLine(41, 301, 20, ILI9341_BLACK);
+
+  tft.drawFastVLine(HORZ_NETWORK_DIVIDER, 0, VERTICAL_TITLE_HEIGHT, ILI9341_BLACK);
+  tft.drawFastVLine(HORZ_NETWORK_DIVIDER + 1, 0, VERTICAL_TITLE_HEIGHT, ILI9341_BLACK);
+
+  tft.drawFastHLine(0, VERITCAL_BASE_HEIGHT, 320, ILI9341_BLACK);
+  tft.drawFastHLine(0, VERITCAL_BASE_HEIGHT + 1, 320, ILI9341_BLACK);
+
+
+
+  tft.drawFastVLine((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
+  tft.drawFastVLine((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER + 1), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
+
+  tft.drawFastVLine((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 2), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
+  tft.drawFastVLine(((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 2) + 1), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
+
+  tft.drawFastVLine((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 3), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
+  tft.drawFastVLine(((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 3) + 1), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
+
+  tft.drawFastVLine((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 4), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
+  tft.drawFastVLine(((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 4) + 1), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
+
+
+
+  // tft.drawFastVLine(41, 301, 20, ILI9341_BLACK);
   //This should leave a small area for the network symbol
+  MCR_SET_DEF_TITLE_POSITION;
+
+  tft.setTextColor(ILI9341_BLACK);
+  tft.setFont(TITLE_FONT);
+  tft.print(title_str.c_str());
 }
 
-//Sets the appropriate network icon on the screen
-void SCRNDRV::setNetworkIcon() {
-  switch (g_screen_data.network_icon) {
+void SCRNDRV::clearDynamicSection(uint16_t BG_color) {
+  tft.fillRect(0, VERTICAL_TITLE_HEIGHT + 2, SCREEN_WIDTH, SCREEN_HEIGHT - (((VERTICAL_TITLE_HEIGHT + 2) + (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT))), BG_color);
+
+  //tft.fillRect(50, 50, 50, 50, ILI9341_BLACK);
+}
+
+void SCRNDRV::setShowNetConnect() {
+  //toggle through the different icons, the speed is dictated by the calling fxn
+
+  switch (g_screen_data.current_network_icon) {
     case signal_good:
-
+      setNetworkState(signal_awful);
+      //tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_full_grfx, 40, 40);
       break;
-    case sginal_ok:
-
+    case signal_ok:
+      setNetworkState(signal_good);
+      // tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_75_grfx, 40, 40);
       break;
-    case signal_poor:
-
+    case signal_bad:
+      setNetworkState(signal_ok);
+      //tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_50_grfx, 40, 40);
+      break;
+    case signal_awful:
+      setNetworkState(signal_bad);
       break;
     default:
+      setNetworkState(signal_awful);
+      // tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_off_grfx, 40, 40);
       //show not connected here
       break;
+  }
+  this->setNetworkIcon();
+}
+
+
+void SCRNDRV::setPowerStates(bool light, bool fan, bool blower, bool misc) {
+
+  if ((g_screen_data.power_states.blower != blower) || (g_screen_data.power_states.fan != fan) || (g_screen_data.power_states.lights != light) || (g_screen_data.power_states.misc != misc)) {
+    g_screen_data.update_power_states = true;
+    g_screen_data.power_states.blower = blower;
+    g_screen_data.power_states.fan = fan;
+    g_screen_data.power_states.lights = light;
+    g_screen_data.power_states.misc = misc;
+  }
+}
+
+
+#define PS_BGCOLOUR_ON  ILI9341_GREEN
+#define PS_FONTCOL_ON ILI9341_BLACK
+#define PS_BGCOLOUR_OFF  ILI9341_RED
+#define PS_FONTCOL_OFF ILI9341_WHITE
+void SCRNDRV::showPowerStates() {
+
+  if (g_screen_data.update_power_states) {
+
+    tft.setFont(DEFAULT_FONT);
+
+    if (g_screen_data.power_states.lights) {
+      //draw green
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT+2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
+      tft.setTextColor(PS_FONTCOL_ON);
+
+    } else {
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT+2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
+      tft.setTextColor(PS_FONTCOL_OFF);
+    }
+    tft.setCursor(LIGHT_TEXT_CURSOR_X, LIGHT_TEXT_CURSOR_Y);
+    tft.print("Light");
+
+
+    if (g_screen_data.power_states.fan) {
+      //draw green
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 1)+2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER-2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
+      tft.setTextColor(PS_FONTCOL_ON);
+    } else {
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 1)+2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER-2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
+      tft.setTextColor(PS_FONTCOL_OFF);
+    }
+    tft.setCursor(FAN_TEXT_CURSOR_X, FAN_TEXT_CURSOR_Y);
+    tft.print("Fan");
+
+
+    if (g_screen_data.power_states.blower) {
+      //draw green
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 2)+2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER-2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
+      tft.setTextColor(PS_FONTCOL_ON);
+    } else {
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 2)+2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER-2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
+      tft.setTextColor(PS_FONTCOL_OFF);
+    }
+    tft.setCursor(BLOWER_TEXT_CURSOR_X, BLOWER_TEXT_CURSOR_Y);
+    tft.print("Dryer");
+
+
+    if (g_screen_data.power_states.misc) {
+      tft.setTextColor(PS_FONTCOL_ON);
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 3)+2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER-2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
+    } else {
+      tft.setTextColor(PS_FONTCOL_OFF);
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 3)+2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER-2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
+    }
+    tft.setCursor(MISC_TEXT_CURSOR_X, MISC_TEXT_CURSOR_Y);
+    tft.print("Misc");
+
+    g_screen_data.update_power_states = false;
+  }
+}
+
+
+//Sets the appropriate network icon on the screen
+
+void SCRNDRV::setNetworkIcon() {
+
+  if (g_screen_data.current_network_icon != g_screen_data.update_network_icon) {
+    g_screen_data.current_network_icon = g_screen_data.update_network_icon;
+
+    switch (g_screen_data.current_network_icon) {
+      case signal_good:
+        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_full_grfx, 40, 40);
+        break;
+      case signal_ok:
+        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_75_grfx, 40, 40);
+        break;
+      case signal_bad:
+        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_50_grfx, 40, 40);
+        break;
+      case signal_awful:
+        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_25_grfx, 40, 40);
+        break;
+      default:
+        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_off_grfx, 40, 40);
+        //show not connected here
+        break;
+    }
   }
 }
 
@@ -184,32 +394,54 @@ void SCRNDRV::task(bool sys_aleep, SHED_APP* shd_data) {
 
 
   //If asleep make sure the screen B Light is off for highest power save.
+  this->SCREENLAYOUT_internalTemp(shd_data);
 }
 
 
 /*********Below are the different screen layouts**************/
+float tmp_inttemp = 0;
 void SCRNDRV::SCREENLAYOUT_internalTemp(SHED_APP* shd_data) {
 
   //Check whether this is the first time this screen is being drawn, if so,
   //then only update the values.    FreeSans24pt7b
   if (g_screen_data.current_screen != CS_intTemperature) {
     //set the screen
-    this->setDefaultScreenLayout();
-
-    tft.setFont(DEFAULT_FONT);
-
-    //Set the highest temperature
-    tft.setCursor(10, 180);
-    tft.print("Max: ");
-    
-
+    this->setDefaultScreenLayout("Indoor Temperature");
 
 
     MCR_SET_CURRENT_SCREEN(CS_intTemperature);
-  } else {
-    //This is an update only screen.
   }
 
+  if (tmp_inttemp != shd_data->environmentals.internal_temp) {
+    tmp_inttemp = shd_data->environmentals.internal_temp;
+    //Clears the dynamic part of the active screen
+    this->clearDynamicSection(ILI9341_WHITE);
+
+    tft.setTextColor(ILI9341_BLACK);
+    tft.setTextSize(2);
+    tft.setFont(HUGE_FONT);
+    tft.setCursor(10, 140);
+    tft.print(shd_data->environmentals.internal_temp);
+    tft.print("c");
+
+    tft.setTextSize(0);
+    tft.setFont(DEFAULT_FONT);
+    //Set the highest temperature
+    tft.setCursor(10, 200);
+    tft.print("Max: ");
+    tft.print(shd_data->environmentals.internal_temp_max);
+    tft.print("c");
+
+    tft.setCursor(200, 200);
+    tft.print("Min: ");
+    tft.print(shd_data->environmentals.internal_temp_min);
+    tft.print("c");
+  }
+
+
+
+  //do additional screen tasks here to avoid overwriting
+  this->showPowerStates();
   this->setNetworkIcon();  //Update this if necessary
 }
 
@@ -217,6 +449,8 @@ void SCRNDRV::SCREENLAYOUT_internalHumd(SHED_APP* shd_data) {
 
 
 
+  //do additional screen tasks here to avoid overwriting
+  this->showPowerStates();
   this->setNetworkIcon();  //Update this if necessary
 }
 
@@ -225,6 +459,8 @@ void SCRNDRV::SCREENLAYOUT_ExternalTemp(SHED_APP* shd_data) {
 
 
 
+  //do additional screen tasks here to avoid overwriting
+  this->showPowerStates();
   this->setNetworkIcon();  //Update this if necessary
 }
 
@@ -232,5 +468,7 @@ void SCRNDRV::SCREENLAYOUT_DoorStatus(SHED_APP* shd_data) {
 
 
 
+  //do additional screen tasks here to avoid overwriting
+  this->showPowerStates();
   this->setNetworkIcon();  //Update this if necessary
 }
