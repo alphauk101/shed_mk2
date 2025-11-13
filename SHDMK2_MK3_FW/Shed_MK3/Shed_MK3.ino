@@ -1,4 +1,5 @@
 #include <Wire.h>
+#include <math.h>
 #include "IOEXP_drv.h"
 #include "int_temphum.h"
 #include "ext_temphum.h"
@@ -9,7 +10,7 @@
 
 #include "shdmk3_config.h"
 
-#define DEFAULT_RELAY_STATE  false
+#define DEFAULT_RELAY_STATE false
 
 #define PRINTOUT(X) Serial.println(X)
 
@@ -23,10 +24,10 @@ SHDPIXEL g_led_driver;
 SCRNDRV g_screen_driver;
 NETMANAGER g_network_manager;
 RTCDRV g_rtc_driver;
-
-
 //Single point of truth for app data/manager
 static SHED_APP g_shed_data;
+
+
 static int RTC_fail_count = 0;
 #define MAX_RTC_ATTEMPTS 3  //If rtc fails to set, max amount before giving up so not to get IP blocked on the NTP
 
@@ -51,11 +52,14 @@ void setup() {
     if (wait == 0) break;
   }
 
-  //Set the default relay state 
+  //Set the default relay state
   g_shed_data.power_states.blower = DEFAULT_RELAY_STATE;
   g_shed_data.power_states.lights = DEFAULT_RELAY_STATE;
   g_shed_data.power_states.fan = DEFAULT_RELAY_STATE;
   g_shed_data.power_states.misc = DEFAULT_RELAY_STATE;
+
+  g_shed_data.door_status.current_state = false;
+  g_shed_data.door_status.open_counter = 0;
 
   //MUST BE INIT'D BEFORE USING AN PERIPHERALS
   Wire.begin();
@@ -124,51 +128,107 @@ void setup() {
 }
 
 
+/**
+ * @brief Calculates the dew point in Celsius using single-precision floats.
+ *
+ * This function uses the Magnus-Tetens formula (a common approximation)
+ * to calculate the dew point from the ambient temperature and relative humidity.
+ *
+ * @param temperatureCelsius The current air temperature in degrees Celsius (float).
+ * @param relativeHumidity The current relative humidity as a percentage (float).
+ * @return The dew point temperature in degrees Celsius (float).
+ */
+float calculateDewPointF(float temperatureCelsius, float relativeHumidity) {
+  // Check for edge cases
+  if (relativeHumidity < 0.01f) {
+    return -273.15f;  // Return a sentinel value
+  }
+  if (relativeHumidity > 100.0f) {
+    relativeHumidity = 100.0f;  // Cap at 100%
+  }
+
+  // Constants for the Magnus-Tetens formula (single-precision)
+  const float B = 17.67f;
+  const float C = 243.5f;  // °C
+
+  // Use std::logf() which is the C++ standard library function
+  // for calculating the natural logarithm of a float.
+  float gamma = logf(relativeHumidity / 100.0f) + (B * temperatureCelsius) / (C + temperatureCelsius);
+
+  // This is the final step, inverting the formula to solve for T_d (dew point)
+  float dewPoint = (C * gamma) / (B - gamma);
+
+  return dewPoint;
+}
+
+
 static void get_environment_sensors() {
 
   float t = g_intTempHum.get_temperature();
   float h = g_intTempHum.get_humidity();
   float et = g_extTemp.getTemp();
 
-
-  if (!isnan(t)) {  // check if 'is not a number'
+  if ((!isnan(t)) && (!isnan(h))) {  // check if 'is not a number'
+    g_shed_data.environmentals.internal_humidity = h;
     g_shed_data.environmentals.internal_temp = t;
+    g_shed_data.environmentals.internal_dewpoint = calculateDewPointF(t, h);
+
+    //Check max/min values if applicable
+    if (g_shed_data.environmentals.internal_temp < g_shed_data.environmentals.internal_temp_min)
+      g_shed_data.environmentals.internal_temp_min = g_shed_data.environmentals.internal_temp;
+
+    if (g_shed_data.environmentals.internal_temp > g_shed_data.environmentals.internal_temp_max)
+      g_shed_data.environmentals.internal_temp_max = g_shed_data.environmentals.internal_temp;
+
+    //Check max/min values if applicable
+    if (g_shed_data.environmentals.internal_humidity < g_shed_data.environmentals.internal_humidity_min)
+      g_shed_data.environmentals.internal_humidity_min = g_shed_data.environmentals.internal_humidity;
+
+    if (g_shed_data.environmentals.internal_humidity > g_shed_data.environmentals.internal_humidity_max)
+      g_shed_data.environmentals.internal_humidity_max = g_shed_data.environmentals.internal_humidity;
+
 #if DEBUG_ENVIRONMENTS
     Serial.print("Temp *C = ");
     Serial.print(t);
     Serial.println("");
-#endif
-  } else {
-#if DEBUG_ENVIRONMENTS
-    Serial.println("Failed to read temperature");
-#endif
-  }
 
-  if (!isnan(h)) {  // check if 'is not a number'
-    g_shed_data.environmentals.internal_humidity = h;
-#if DEBUG_ENVIRONMENTS
+    Serial.print("Calc dewpoint *C = ");
+    Serial.print(g_shed_data.environmentals.internal_dewpoint);
+    Serial.println("");
+
     Serial.print("Hum. % = ");
     Serial.println(h);
 #endif
+
   } else {
 #if DEBUG_ENVIRONMENTS
-    Serial.println("Failed to read humidity");
+    Serial.println("Failed to internal temp and humd");
 #endif
   }
 
+
   if (!isnan(et)) {  // check if 'is not a number'
     g_shed_data.environmentals.external_temp = et;
+
 #if DEBUG_ENVIRONMENTS
     Serial.print("External temp *C = ");
     Serial.print(et);
     Serial.println("");
 #endif
+
+    if (g_shed_data.environmentals.external_temp < g_shed_data.environmentals.external_temp_min)
+      g_shed_data.environmentals.external_temp_min = g_shed_data.environmentals.external_temp;
+
+    if (g_shed_data.environmentals.external_temp > g_shed_data.environmentals.external_temp_max)
+      g_shed_data.environmentals.external_temp = g_shed_data.environmentals.external_temp;
+
   } else {
 #if DEBUG_ENVIRONMENTS
     Serial.println("Failed to read external temp sensor");
 #endif
   }
 }
+
 
 /*
 Checks all timers related to application tasks
@@ -243,6 +303,13 @@ static void check_task_timers() {
     }
     g_shed_data.app_timers.rtc_timer = current_time;
   }
+
+
+
+
+
+  //////////BELOW ARE NONE TIME RESTRICTED TASKS/////////////
+  g_led_driver.task(g_shed_data.system_asleep);
 }
 
 
@@ -271,8 +338,12 @@ networkState_icon convertRSSIToIcon() {
   }
 }
 
-
-
+UL_TIMER_t door_check_time = 0;
+void checkDoorState()
+{
+  //We will need to de bounce, use a delay to do this.
+  millis
+}
 
 
 void loop() {
@@ -286,9 +357,6 @@ void loop() {
 
   //Do all time related tasks... blocking.
   check_task_timers();
-
-
-  //Any module tasks should be done here
-  g_led_driver.task(g_shed_data.system_asleep);
+  checkDoorState();//check the door state
   delay(MAIN_LOOP_DELAY);
 }

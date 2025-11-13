@@ -15,7 +15,7 @@
   this->showPowerStates(); \
   this->setNetworkIcon()
 
-#define SPI_SPEED  8000000
+#define SPI_SPEED 8000000
 
 #define TITLE_FONT &FreeSans12pt7b
 #define DEFAULT_FONT &FreeSans9pt7b
@@ -229,8 +229,6 @@ void SCRNDRV::setDefaultScreenLayout(const std::string& title_str) {
 
   tft.drawFastHLine(0, VERITCAL_BASE_HEIGHT, 320, ILI9341_BLACK);
   tft.drawFastHLine(0, VERITCAL_BASE_HEIGHT + 1, 320, ILI9341_BLACK);
-
-
 
   tft.drawFastVLine((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
   tft.drawFastVLine((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER + 1), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
@@ -503,7 +501,41 @@ void SCRNDRV::SCREENLAYOUT_internalTemp(SHED_APP* shd_data) {
 
 void SCRNDRV::SCREENLAYOUT_internalHumd(SHED_APP* shd_data) {
 
+  tft.setTextColor(ILI9341_BLACK);
+  tft.setTextSize(1);
+  tft.setFont(HUGE_FONT);
+  tft.setCursor(10, 140);
+  tft.print(shd_data->environmentals.internal_humidity);
+  tft.print("%");
 
+/////////////////////////////////////////////////////////////////////////////////////////
+  if (shd_data->environmentals.internal_temp <= shd_data->environmentals.internal_dewpoint) {
+    //we are in the dew!
+    tft.setTextColor(ILI9341_RED);
+  } else {
+    tft.setTextColor(ILI9341_BLACK);
+  }
+
+  tft.setTextSize(1);
+  tft.setFont(HUGE_FONT);
+  tft.setCursor(150, 140);
+  tft.print("Dew point: ");
+  tft.print(shd_data->environmentals.internal_dewpoint);
+  tft.print("c");
+
+//////////////////////////////////////////////////////////////////////////////////////////
+  tft.setTextSize(0);
+  tft.setFont(DEFAULT_FONT);
+  //Set the highest temperature
+  tft.setCursor(10, 200);
+  tft.print("Max: ");
+  tft.print(shd_data->environmentals.internal_humidity_max);
+  tft.print("%");
+
+  tft.setCursor(200, 200);
+  tft.print("Min: ");
+  tft.print(shd_data->environmentals.internal_humidity_min);
+  tft.print("%");
 
   //do additional screen tasks here to avoid overwriting
   MCR_MAND_TASK_FXN;
@@ -538,17 +570,20 @@ void SCRNDRV::SCREENLAYOUT_ExternalTemp(SHED_APP* shd_data) {
     tft.print("c");
   }
 
+  //do additional screen tasks here to avoid overwriting
+  MCR_MAND_TASK_FXN;
+}
 
+
+void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data) 
+{
+  //Door status
+  //Last door open time
+  //Door opened counter
+  //Timestamp
 
 
   //do additional screen tasks here to avoid overwriting
   MCR_MAND_TASK_FXN;
 }
 
-void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data) {
-
-
-
-  //do additional screen tasks here to avoid overwriting
-  MCR_MAND_TASK_FXN;
-}

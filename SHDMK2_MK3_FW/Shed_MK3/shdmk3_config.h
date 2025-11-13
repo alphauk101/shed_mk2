@@ -1,5 +1,6 @@
 #ifndef __SHDMKR_CFG__
 #define __SHDMKR_CFG__
+#include "RTClib.h"
 
 #define DEBUG_ENVIRONMENTS 0
 
@@ -11,7 +12,7 @@
 
 /**********DEFAULT SCREEN MESSAGES********************/
 #define STARTUP_MESSAGE "Shed mk3.... V0.1"
-#define SCREEN_CHANGE_TIMEOUT             10000 //change between screen
+#define SCREEN_CHANGE_TIMEOUT 10000  //change between screen
 /*****************************************************/
 
 /*
@@ -51,8 +52,8 @@ use the below defines to set the states so it is synchronised with the hardware.
 #define ENVIRONMENT_SAMPLE_TIME 5000
 #define LED_DEFAULT_TIME 5000
 #define SCREEN_UPDATE_TIME 500
-#define NETWORK_TASK_CHECK  10000
-#define RTC_TIMER_TASK      30000
+#define NETWORK_TASK_CHECK 10000
+#define RTC_TIMER_TASK 30000
 
 typedef unsigned long UL_TIMER_t;
 
@@ -65,12 +66,12 @@ typedef struct {
 } APP_TIMERS;
 
 
-typedef struct{
+typedef struct {
   bool lights;
   bool fan;
   bool blower;
   bool misc;
-}POWER_STATES;
+} POWER_STATES;
 
 
 typedef struct {
@@ -78,26 +79,37 @@ typedef struct {
   float internal_humidity = 0;
   float external_temp = 0;
 
-  float external_temp_min = 20;
+  float external_temp_min = 99;
   float external_temp_max = 0;
 
-  float internal_temp_min = 20;
+  float internal_temp_min = 99;
   float internal_temp_max = 0;
 
-  float internal_humidity_min = 20;
+  float internal_humidity_min = 99;
   float internal_humidity_max = 0;
 
+  float internal_dewpoint = 0;
 } ENVIRON_READS;
+
+typedef struct {
+  bool current_state;
+
+  uint16_t open_counter;
+
+  DateTime last_opened;
+} DOOR_STATUS;
 
 
 typedef struct {
   ENVIRON_READS environmentals;
 
-  POWER_STATES    power_states;
+  POWER_STATES power_states;
 
   bool system_asleep = false;  //If sleeping, all modules should be in lowest power mode.
 
   APP_TIMERS app_timers;
+
+  DOOR_STATUS door_status;
 } SHED_APP;
 
 #endif

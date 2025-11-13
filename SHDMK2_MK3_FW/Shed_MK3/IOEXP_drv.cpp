@@ -51,3 +51,4 @@ void IOEXP_DRV::set_relay_pins(bool R1, bool R2, bool R3, bool R4) {
   }
   mcp.writePort(MCP23017Port::A, this->PORTA_PIN_STATE);
 }
+

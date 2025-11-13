@@ -1,6 +1,7 @@
+#include "RTClib.h"
 #include "rtc_driver.h"
 // Date and time functions using a DS1307 RTC connected via I2C and Wire lib
-#include "RTClib.h"
+
 
 //What time in the day the app resets the NTP request counter, only reset once a day.
 #define NTP_RESET_HOUR        23
@@ -15,6 +16,8 @@ typedef struct {
   bool isSet;
 
   void (*callback_RTC)(int);
+
+  DateTime  last_timestamp;
 } RTC_DATA;
 static RTC_DATA g_rtc_data;
 
@@ -25,14 +28,22 @@ bool RTCDRV::init(void (*callback)(int)) {
   return rtc.begin();
 }
 
+bool RTCDRV::getLatestTime(DateTime *ts_ptr)
+{
+  if(g_rtc_data.isSet)
+  {
+    *ts_ptr = g_rtc_data.last_timestamp;
+    return true;
+  }else{
+    return false;
+  }
+}
+
 
 bool RTCDRV::task(SHED_APP *shd_ptr) {
   if (rtc.isrunning()) {
     DateTime now = rtc.now();
-    //debugging only
-    //this->showtime();
-
-
+    g_rtc_data.last_timestamp = now;
     //check NTP reset time
     if ((now.hour() == NTP_RESET_HOUR) && (now.minute() == NTP_RESET_MINUTE)) {
 
