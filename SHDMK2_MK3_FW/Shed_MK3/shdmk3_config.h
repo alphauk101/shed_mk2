@@ -4,6 +4,8 @@
 
 #define DEBUG_ENVIRONMENTS 0
 
+#define DOOR_STATUS_PIN   A5
+
 /*************************NETWORK *********************/
 #define SECRET_SSID "fudgemesh"
 #define SECRET_PASS "ancienthill347"
@@ -110,6 +112,8 @@ typedef struct {
   APP_TIMERS app_timers;
 
   DOOR_STATUS door_status;
+
+  DateTime    last_timestammp;
 } SHED_APP;
 
 #endif

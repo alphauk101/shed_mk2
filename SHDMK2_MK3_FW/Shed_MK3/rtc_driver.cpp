@@ -23,7 +23,7 @@ static RTC_DATA g_rtc_data;
 
 
 bool RTCDRV::init(void (*callback)(int)) {
-  g_rtc_data.isSet = false;
+  g_rtc_data.isSet = true;
   g_rtc_data.callback_RTC = callback;
   return rtc.begin();
 }

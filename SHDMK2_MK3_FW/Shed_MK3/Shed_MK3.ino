@@ -14,20 +14,24 @@
 
 #define PRINTOUT(X) Serial.println(X)
 
+uint8_t button_debounce = 0;
+#define DOOR_STS_DEBOUNCE_COUNT 50
+
 #define MAIN_LOOP_DELAY 10
 
 //Local drivers
-IOEXP_DRV g_IOEXP_driver;
-INTTMPHUM g_intTempHum;
-EXTTEMP g_extTemp;
-SHDPIXEL g_led_driver;
-SCRNDRV g_screen_driver;
-NETMANAGER g_network_manager;
-RTCDRV g_rtc_driver;
+static IOEXP_DRV g_IOEXP_driver;
+static INTTMPHUM g_intTempHum;
+static EXTTEMP g_extTemp;
+static SHDPIXEL g_led_driver;
+static SCRNDRV g_screen_driver;
+static NETMANAGER g_network_manager;
+static RTCDRV g_rtc_driver;
 //Single point of truth for app data/manager
 static SHED_APP g_shed_data;
 
 
+UL_TIMER_t fw_led_timer = 0;
 static int RTC_fail_count = 0;
 #define MAX_RTC_ATTEMPTS 3  //If rtc fails to set, max amount before giving up so not to get IP blocked on the NTP
 
@@ -60,6 +64,8 @@ void setup() {
 
   g_shed_data.door_status.current_state = false;
   g_shed_data.door_status.open_counter = 0;
+
+  pinMode(DOOR_STATUS_PIN, INPUT);
 
   //MUST BE INIT'D BEFORE USING AN PERIPHERALS
   Wire.begin();
@@ -120,6 +126,7 @@ void setup() {
   } else {
     g_screen_driver.updateStartUpMessage("", "", "", "", "", "", "RTC...ERROR");
   }
+
 
 #ifndef NO_DELAY_STARTUP
   //Small delay to allow visual confirmation
@@ -230,13 +237,16 @@ static void get_environment_sensors() {
 }
 
 
-/*
-Checks all timers related to application tasks
-*/
-//int count = 0;
 static void check_task_timers() {
   UL_TIMER_t current_time = millis();
 
+  //////////BELOW ARE NONE TIME RESTRICTED TASKS/////////////
+  g_led_driver.task(g_shed_data.system_asleep);
+
+  if ((current_time - fw_led_timer) > 500) {
+    g_IOEXP_driver.toggle_firmwareLED_pin();
+    fw_led_timer = current_time;
+  }
 
   //Temp and hum sensing
   if ((current_time - g_shed_data.app_timers.environment_timer) > ENVIRONMENT_SAMPLE_TIME) {
@@ -278,7 +288,8 @@ static void check_task_timers() {
   //Check the RTC task
   if ((current_time - g_shed_data.app_timers.rtc_timer) > RTC_TIMER_TASK) {
     if (g_rtc_driver.task(&g_shed_data)) {
-      //time is good do what we want here
+      //Get a snapshot of the time
+      g_rtc_driver.getLatestTime(&g_shed_data.last_timestammp);
 
     } else {
       /*The RTC has reported not running or not sest, this will try to 
@@ -303,18 +314,26 @@ static void check_task_timers() {
     }
     g_shed_data.app_timers.rtc_timer = current_time;
   }
-
-
-
-
-
-  //////////BELOW ARE NONE TIME RESTRICTED TASKS/////////////
-  g_led_driver.task(g_shed_data.system_asleep);
+  //Check if buttons pressed.
+  if (g_IOEXP_driver.task()) {
+    get_btton_press();
+  }
 }
 
 
-
-
+void get_btton_press() {
+  bool btnA = false;
+  bool btnB = false;
+  //This resets the button pressed state
+  g_IOEXP_driver.get_pressed_buttons(&btnA, &btnB);
+  if (btnA) {
+    PRINTOUT("Button A PRESSED!");
+  }
+  
+  if (btnB) {
+    PRINTOUT("Button B PRESSED!");
+  }
+}
 
 
 networkState_icon convertRSSIToIcon() {
@@ -338,11 +357,32 @@ networkState_icon convertRSSIToIcon() {
   }
 }
 
-UL_TIMER_t door_check_time = 0;
-void checkDoorState()
-{
-  //We will need to de bounce, use a delay to do this.
-  millis
+
+
+void checkDoorState() {
+  DateTime tmpDT;
+  bool doorState = (digitalRead(DOOR_STATUS_PIN) == HIGH) ? true : false;
+  if (doorState != g_shed_data.door_status.current_state) {
+    //debounce
+    if (button_debounce < DOOR_STS_DEBOUNCE_COUNT) {
+      button_debounce++;
+    } else {
+
+      PRINTOUT("DOOR STATE CHANGED");
+
+      //The door state has changed update
+      g_shed_data.door_status.current_state = doorState;
+
+      if (g_shed_data.door_status.current_state)
+        g_shed_data.door_status.open_counter++;
+
+      if (g_rtc_driver.getLatestTime(&tmpDT)) {
+        g_shed_data.door_status.last_opened = tmpDT;
+      }
+    }
+  } else {
+    button_debounce = 0;
+  }
 }
 
 
@@ -357,6 +397,6 @@ void loop() {
 
   //Do all time related tasks... blocking.
   check_task_timers();
-  checkDoorState();//check the door state
+  checkDoorState();  //check the door state
   delay(MAIN_LOOP_DELAY);
 }

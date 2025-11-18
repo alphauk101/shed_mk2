@@ -3,23 +3,25 @@
 #include <SPI.h>
 #include <WiFiUdp.h>
 
+//#define ENABLE_NTP //debugging only, prevents repeative calls to NTP
 
-char ssid[] = SECRET_SSID;      // your network SSID (name)
-char pass[] = SECRET_PASS;      // your network password (use for WPA, or use as key for WEP)
-int status = WL_IDLE_STATUS;    // the WiFi radio's status
+
+char ssid[] = SECRET_SSID;    // your network SSID (name)
+char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
+int status = WL_IDLE_STATUS;  // the WiFi radio's status
 
 
 //const char timeServer[] = "time.nist.gov";  // time.nist.gov NTP server
-IPAddress timeServer(162, 159, 200, 123); // pool.ntp.org NTP server
-unsigned int localPort = 2390;      // local port to listen for UDP packets
-const int NTP_PACKET_SIZE = 48;  // NTP time stamp is in the first 48 bytes of the message
+IPAddress timeServer(162, 159, 200, 123);  // pool.ntp.org NTP server
+unsigned int localPort = 2390;             // local port to listen for UDP packets
+const int NTP_PACKET_SIZE = 48;            // NTP time stamp is in the first 48 bytes of the message
 
 byte packetBuffer[NTP_PACKET_SIZE];  //buffer to hold incoming and outgoing packets
 // A UDP instance to let us send and receive packets over UDP
 WiFiUDP Udp;
 
 
-bool NETMANAGER::init(SCRNDRV *scrn_ptr) {
+bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
   int timeout = 10;
 
   // check for the WiFi module:
@@ -62,26 +64,31 @@ long NETMANAGER::getRSSI() {
   return WiFi.RSSI();
 }
 
-bool NETMANAGER::isConnected()
-{
+bool NETMANAGER::isConnected() {
   return (WiFi.status() == WL_CONNECTED);
 }
 
+//String NETMANAGER::isConnected() {
+  //get ip and rssi for info screen 
+//}
 
 /*
 Attempts to get the time from the NTP, 
 return secs since unis time (1970) or 0 if failed
 */
-unsigned long NETMANAGER::getTime()
-{
+unsigned long NETMANAGER::getTime() {
+#ifdef ENABLE_NTP
   Udp.begin(localPort);
 
-  this->sendNTPpacket(timeServer); // send an NTP packet to a time server
+  this->sendNTPpacket(timeServer);  // send an NTP packet to a time server
   delay(1000);
   unsigned long out = this->parseTimeFromPacket();
   Udp.stop();
-  
+
   return out;
+#else
+  return 0;
+#endif
 }
 
 
@@ -145,9 +152,9 @@ unsigned long NETMANAGER::parseTimeFromPacket() {
       // In the first 10 minutes of each hour, we'll want a leading '0'
       Serial.print('0');
     }
-   // t_packet[0] = ((epoch % 86400L) / 3600); //h
+    // t_packet[0] = ((epoch % 86400L) / 3600); //h
     //t_packet[1] = ((epoch % 3600) / 60); //m
-   // t_packet[2] = (epoch % 60);
+    // t_packet[2] = (epoch % 60);
 
 
     Serial.print((epoch % 3600) / 60);  // print the minute (3600 equals secs per minute)
@@ -160,7 +167,7 @@ unsigned long NETMANAGER::parseTimeFromPacket() {
 
 
     return epoch;
-  }else{
+  } else {
     return 0;
   }
 }

@@ -41,7 +41,7 @@
 #define HORZ_NETWORK_DIVIDER 275  //Move the network section horizontal divider here
 #define VERTICAL_TITLE_HEIGHT 30  //Title vertical height (everything should adjust auto)
 #define VERITCAL_BASE_HEIGHT (SCREEN_HEIGHT - 30)
-#define NETWORK_ICOM_HORZ 280
+#define NETWORK_ICOM_HORZ 285
 
 #define HORZ_PWRSTS_SECTION_WIDTH_DIVIDER 80  //Power status section across the bottom of the screen, should be factor of 320
 
@@ -363,7 +363,7 @@ void SCRNDRV::showPowerStates() {
 
 
 //Sets the appropriate network icon on the screen
-
+#define NETWORK_ICON_PXL_SIZE 28
 void SCRNDRV::setNetworkIcon() {
 
   if (g_screen_data.current_network_icon != g_screen_data.update_network_icon) {
@@ -371,19 +371,19 @@ void SCRNDRV::setNetworkIcon() {
 
     switch (g_screen_data.current_network_icon) {
       case signal_good:
-        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_full_grfx, 40, 40);
+        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_full_grfx, NETWORK_ICON_PXL_SIZE, NETWORK_ICON_PXL_SIZE);
         break;
       case signal_ok:
-        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_75_grfx, 40, 40);
+        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_75_grfx, NETWORK_ICON_PXL_SIZE, NETWORK_ICON_PXL_SIZE);
         break;
       case signal_bad:
-        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_50_grfx, 40, 40);
+        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_50_grfx, NETWORK_ICON_PXL_SIZE, NETWORK_ICON_PXL_SIZE);
         break;
       case signal_awful:
-        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_25_grfx, 40, 40);
+        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_25_grfx, NETWORK_ICON_PXL_SIZE, NETWORK_ICON_PXL_SIZE);
         break;
       default:
-        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_off_grfx, 40, 40);
+        tft.drawRGBBitmap(NETWORK_ICOM_HORZ, 0, (uint16_t*)network_off_grfx, NETWORK_ICON_PXL_SIZE, NETWORK_ICON_PXL_SIZE);
         //show not connected here
         break;
     }
@@ -392,6 +392,8 @@ void SCRNDRV::setNetworkIcon() {
 
 float tmp_inttemp = 0;
 float tmp_exttemp = 0;
+float tmp_humidity = 0;
+bool info_shown = false;
 void SCRNDRV::task(bool sys_aleep, SHED_APP* shd_data) {
 
   //check if the timer has elapsed and change the screen accordingly.
@@ -403,6 +405,8 @@ void SCRNDRV::task(bool sys_aleep, SHED_APP* shd_data) {
     //reset screen dependant flags/vars here
     tmp_inttemp = 0;
     tmp_exttemp = 0;
+    tmp_humidity = 0;
+    info_shown = false;
     g_screen_data.update_power_states = true;
     g_screen_data.current_network_icon = signal_none;
   }
@@ -421,7 +425,7 @@ void SCRNDRV::task(bool sys_aleep, SHED_APP* shd_data) {
       this->SCREENLAYOUT_internalHumd(shd_data);
       break;
     case CS_DoorState:
-
+      this->SCREENLAYOUT_Information(shd_data);
       break;
     default:
       break;
@@ -501,41 +505,46 @@ void SCRNDRV::SCREENLAYOUT_internalTemp(SHED_APP* shd_data) {
 
 void SCRNDRV::SCREENLAYOUT_internalHumd(SHED_APP* shd_data) {
 
-  tft.setTextColor(ILI9341_BLACK);
-  tft.setTextSize(1);
-  tft.setFont(HUGE_FONT);
-  tft.setCursor(10, 140);
-  tft.print(shd_data->environmentals.internal_humidity);
-  tft.print("%");
+  if (tmp_humidity != shd_data->environmentals.internal_humidity) {
+    tmp_humidity = shd_data->environmentals.internal_humidity;
 
-/////////////////////////////////////////////////////////////////////////////////////////
-  if (shd_data->environmentals.internal_temp <= shd_data->environmentals.internal_dewpoint) {
-    //we are in the dew!
-    tft.setTextColor(ILI9341_RED);
-  } else {
-    tft.setTextColor(ILI9341_BLACK);
+    //Clears the dynamic part of the active screen
+    if (shd_data->environmentals.internal_temp < shd_data->environmentals.internal_dewpoint) {
+      //if(true){
+      this->clearDynamicSection(ILI9341_RED);
+      tft.setTextColor(ILI9341_WHITE);
+    } else {
+      this->clearDynamicSection(ILI9341_WHITE);
+      tft.setTextColor(ILI9341_BLACK);
+    }
+
+    //tft.setTextColor(ILI9341_BLACK);
+    tft.setTextSize(1);
+    tft.setFont(HUGE_FONT);
+    tft.setCursor(90, 100);
+    tft.print(shd_data->environmentals.internal_humidity);
+    tft.print("%");
+    /////////////////////////////////////////////////////////////////////////////////////////
+    tft.setTextSize(1);
+    tft.setFont(HUGE_FONT);
+    tft.setCursor(20, 150);
+    tft.print("Dew: ");
+    tft.print(shd_data->environmentals.internal_dewpoint);
+    tft.print("c");
+    //////////////////////////////////////////////////////////////////////////////////////////
+    tft.setTextSize(0);
+    tft.setFont(DEFAULT_FONT);
+    //Set the highest temperature
+    tft.setCursor(10, 200);
+    tft.print("Max: ");
+    tft.print(shd_data->environmentals.internal_humidity_max);
+    tft.print("%");
+
+    tft.setCursor(200, 200);
+    tft.print("Min: ");
+    tft.print(shd_data->environmentals.internal_humidity_min);
+    tft.print("%");
   }
-
-  tft.setTextSize(1);
-  tft.setFont(HUGE_FONT);
-  tft.setCursor(150, 140);
-  tft.print("Dew point: ");
-  tft.print(shd_data->environmentals.internal_dewpoint);
-  tft.print("c");
-
-//////////////////////////////////////////////////////////////////////////////////////////
-  tft.setTextSize(0);
-  tft.setFont(DEFAULT_FONT);
-  //Set the highest temperature
-  tft.setCursor(10, 200);
-  tft.print("Max: ");
-  tft.print(shd_data->environmentals.internal_humidity_max);
-  tft.print("%");
-
-  tft.setCursor(200, 200);
-  tft.print("Min: ");
-  tft.print(shd_data->environmentals.internal_humidity_min);
-  tft.print("%");
 
   //do additional screen tasks here to avoid overwriting
   MCR_MAND_TASK_FXN;
@@ -575,15 +584,38 @@ void SCRNDRV::SCREENLAYOUT_ExternalTemp(SHED_APP* shd_data) {
 }
 
 
-void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data) 
-{
+void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data) {
   //Door status
   //Last door open time
   //Door opened counter
   //Timestamp
 
+  if (!info_shown) {
+    info_shown = true;
+    this->clearDynamicSection(ILI9341_WHITE);
+    tft.setFont(DEFAULT_FONT);
+    tft.setTextColor(ILI9341_BLACK);
+    tft.setCursor(10, 50);
 
+    tft.print("Door status: ");
+    tft.println((shd_data->door_status.current_state) ? "OPEN" : "CLOSED");
+
+    tft.print("Door count: ");
+    tft.println(shd_data->door_status.open_counter);
+
+    tft.print("Time: ");
+    tft.print(shd_data->last_timestammp.year(), DEC);
+    tft.print('/');
+    tft.print(shd_data->last_timestammp.month(), DEC);
+    tft.print('/');
+    tft.print(shd_data->last_timestammp.day(), DEC);
+    tft.print(' ');
+    tft.print(shd_data->last_timestammp.hour(), DEC);
+    tft.print(':');
+    tft.println(shd_data->last_timestammp.minute(), DEC);
+
+
+  }
   //do additional screen tasks here to avoid overwriting
   MCR_MAND_TASK_FXN;
 }
-
