@@ -55,7 +55,7 @@ void setup() {
     delay(1);
     if (wait == 0) break;
   }
-
+  g_shed_data.network_info.connected = false;
   //Set the default relay state
   g_shed_data.power_states.blower = DEFAULT_RELAY_STATE;
   g_shed_data.power_states.lights = DEFAULT_RELAY_STATE;
@@ -113,9 +113,10 @@ void setup() {
   //Set the startup network state
   g_screen_driver.setNetworkState(not_connected);
 
-
-  if (g_network_manager.init(&g_screen_driver)) {
+  g_shed_data.network_info.connected = g_network_manager.init(&g_screen_driver);
+  if (g_shed_data.network_info.connected) {
     //wifi connected
+    g_network_manager.getIP(g_shed_data.network_info.ip);
     g_screen_driver.updateStartUpMessage("", "", "", "", "", "Network... OK", "");
   } else {
     g_screen_driver.updateStartUpMessage("", "", "", "", "", "Network... Failed", "");
@@ -276,11 +277,11 @@ static void check_task_timers() {
   }
 
   if ((current_time - g_shed_data.app_timers.network_timer) > NETWORK_TASK_CHECK) {
-    if (g_network_manager.isConnected()) {
+    g_shed_data.network_info.connected = g_network_manager.isConnected();
+    if (g_shed_data.network_info.connected) {
       //g_network_manager.getTime();
     } else {
-      //try to connect
-      Serial.print("Wifi not connected");
+      //Not connected should retry, but not frequently!
     }
     g_shed_data.app_timers.network_timer = current_time;
   }
@@ -329,7 +330,7 @@ void get_btton_press() {
   if (btnA) {
     PRINTOUT("Button A PRESSED!");
   }
-  
+
   if (btnB) {
     PRINTOUT("Button B PRESSED!");
   }
@@ -337,24 +338,30 @@ void get_btton_press() {
 
 
 networkState_icon convertRSSIToIcon() {
-  long rssi = g_network_manager.getRSSI();
+  g_shed_data.network_info.latest_RSSI = g_network_manager.getRSSI();
   // Serial.print("RSSI: ");
   //Serial.println(rssi);
 
   // A value of 0 often means "not available" or "no signal"
-  if (rssi == 0) {
+  if (g_shed_data.network_info.latest_RSSI == 0) {
     return signal_none;
   }
   // Remember: -50 is GREATER than -70
-  if (rssi >= -60) {
+  if (g_shed_data.network_info.latest_RSSI >= -60) {
     return signal_good;  // -60 dBm or better
-  } else if (rssi >= -70) {
+  } else if (g_shed_data.network_info.latest_RSSI >= -70) {
     return signal_ok;  // -61 to -70 dBm
-  } else if (rssi >= -80) {
+  } else if (g_shed_data.network_info.latest_RSSI >= -80) {
     return signal_bad;  // -71 to -80 dBm
   } else {
     return signal_awful;  // -81 dBm or worse
   }
+}
+
+
+void doorStateChanged()
+{
+
 }
 
 

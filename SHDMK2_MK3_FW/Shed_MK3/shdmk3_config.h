@@ -101,6 +101,15 @@ typedef struct {
   DateTime last_opened;
 } DOOR_STATUS;
 
+typedef struct{
+  bool connected;
+
+  String ip;
+
+  long latest_RSSI;
+
+}NETWORK_INFO;
+
 
 typedef struct {
   ENVIRON_READS environmentals;
@@ -114,6 +123,8 @@ typedef struct {
   DOOR_STATUS door_status;
 
   DateTime    last_timestammp;
+
+  NETWORK_INFO  network_info;
 } SHED_APP;
 
 #endif

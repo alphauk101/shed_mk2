@@ -55,6 +55,7 @@ private:
   void SCREENLAYOUT_Information(SHED_APP*);
   void clearDynamicSection(uint16_t);
   void showPowerStates(void);
+  String uptimeString(unsigned long);
 };
 
 

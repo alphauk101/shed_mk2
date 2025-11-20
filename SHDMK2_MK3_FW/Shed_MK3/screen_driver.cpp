@@ -578,7 +578,6 @@ void SCRNDRV::SCREENLAYOUT_ExternalTemp(SHED_APP* shd_data) {
     tft.print(shd_data->environmentals.external_temp_min);
     tft.print("c");
   }
-
   //do additional screen tasks here to avoid overwriting
   MCR_MAND_TASK_FXN;
 }
@@ -595,14 +594,21 @@ void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data) {
     this->clearDynamicSection(ILI9341_WHITE);
     tft.setFont(DEFAULT_FONT);
     tft.setTextColor(ILI9341_BLACK);
-    tft.setCursor(10, 50);
+    int Y_cursor = 65;
+    //Reusing the start up screen message.
 
+    tft.setCursor(TEXT_START_X, Y_cursor);
     tft.print("Door status: ");
-    tft.println((shd_data->door_status.current_state) ? "OPEN" : "CLOSED");
+    tft.print((shd_data->door_status.current_state) ? "OPEN" : "CLOSED");
+    Y_cursor += FONT_HEIGHT;
+    tft.setCursor(TEXT_START_X, Y_cursor);
 
     tft.print("Door count: ");
-    tft.println(shd_data->door_status.open_counter);
+    tft.print(shd_data->door_status.open_counter);
+    Y_cursor += FONT_HEIGHT;
+    tft.setCursor(TEXT_START_X, Y_cursor);
 
+    /*Timestamp*/
     tft.print("Time: ");
     tft.print(shd_data->last_timestammp.year(), DEC);
     tft.print('/');
@@ -612,10 +618,50 @@ void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data) {
     tft.print(' ');
     tft.print(shd_data->last_timestammp.hour(), DEC);
     tft.print(':');
-    tft.println(shd_data->last_timestammp.minute(), DEC);
+    tft.print(shd_data->last_timestammp.minute(), DEC);
+    Y_cursor += FONT_HEIGHT;
+    tft.setCursor(TEXT_START_X, Y_cursor);
+    /**********************************/
 
+    if (shd_data->network_info.connected) {
+      tft.print("Network: connected ");
+      Y_cursor += FONT_HEIGHT;
+      tft.setCursor(TEXT_START_X, Y_cursor);
+      tft.print("IP: ");
+      tft.print(shd_data->network_info.ip);
+      Y_cursor += FONT_HEIGHT;
+      tft.setCursor(TEXT_START_X, Y_cursor);
+      tft.print("RSSI: ");
+      tft.print(shd_data->network_info.latest_RSSI);
+      tft.print("dBm");
+    } else {
+      tft.print("Network: disconnected ");
+    }
+    Y_cursor += FONT_HEIGHT;
+    tft.setCursor(TEXT_START_X, Y_cursor);
 
+    String uptime = uptimeString(millis());
+    tft.print("Uptime: ");
+    tft.print(uptime);
   }
   //do additional screen tasks here to avoid overwriting
   MCR_MAND_TASK_FXN;
+}
+
+String SCRNDRV::uptimeString(unsigned long currentMillis) {
+  unsigned long seconds = currentMillis / 1000;
+  unsigned long minutes = seconds / 60;
+  unsigned long hours = minutes / 60;
+  unsigned long days = hours / 24;
+
+  // Calculate the "remainders" for the display
+  currentMillis %= 1000;
+  seconds %= 60;
+  minutes %= 60;
+  hours %= 24;
+
+  // Create a formatted String (e.g., "1d 02:15:45")
+  String timeString = String(days) + "d " + String(hours) + ":" + String(minutes) + ":" + String(seconds);
+
+  return timeString;
 }

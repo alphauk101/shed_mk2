@@ -64,6 +64,17 @@ long NETMANAGER::getRSSI() {
   return WiFi.RSSI();
 }
 
+void NETMANAGER::getIP(String &ip_ptr)
+{
+  if(this->isConnected())
+  {
+    //IPAddress ip = WiFi.localIP();
+    //String s = ip.toString();
+    //ip_ptr = s;
+    ip_ptr = WiFi.localIP().toString();
+  }
+}
+
 bool NETMANAGER::isConnected() {
   return (WiFi.status() == WL_CONNECTED);
 }

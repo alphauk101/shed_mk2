@@ -29,6 +29,9 @@ bool IOEXP_DRV::task() {
   if ((port & (1 << SWT_1_BP)) == 0) {
     this->BTN_A_PRESSED = true;
   }
+
+
+  
   if ((port & (1 << SWT_2_BP)) == 0) {
     this->BTN_B_PRESSED = true;
   }

@@ -12,6 +12,7 @@ public:
   long getRSSI(void);
   unsigned long  getTime(void); //return secs from unix epoch
   bool isConnected(void);
+  void getIP(String &ip_ptr);
 private:
   unsigned long  parseTimeFromPacket(void);
   //void sendNTPpacket(const char *address);
