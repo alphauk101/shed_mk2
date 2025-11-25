@@ -7,6 +7,8 @@
 #include "screen_driver.h"
 #include "network_manager.h"
 #include "rtc_driver.h"
+#include <arduino-timer.h>
+
 
 #include "shdmk3_config.h"
 
@@ -18,6 +20,8 @@ uint8_t button_debounce = 0;
 #define DOOR_STS_DEBOUNCE_COUNT 50
 
 #define MAIN_LOOP_DELAY 10
+
+auto timer = timer_create_default(); // create a timer with default settings
 
 //Local drivers
 static IOEXP_DRV g_IOEXP_driver;
@@ -43,6 +47,16 @@ static void RTC_callback_event(int evt) {
       RTC_fail_count = 0;
       break;
   }
+}
+
+bool onehz_callback(void *)
+{
+
+  //Tick the timers if necessary
+  if(g_shed_data.app_timers.sys_sleep_timer > 0)
+    g_shed_data.app_timers.sys_sleep_timer --;
+
+  return true;
 }
 
 //#define NO_DELAY_STARTUP
@@ -128,7 +142,7 @@ void setup() {
     g_screen_driver.updateStartUpMessage("", "", "", "", "", "", "RTC...ERROR");
   }
 
-
+timer.every(1000, onehz_callback);
 #ifndef NO_DELAY_STARTUP
   //Small delay to allow visual confirmation
   delay(2000);
@@ -276,6 +290,7 @@ static void check_task_timers() {
     g_shed_data.app_timers.screen_timer = current_time;
   }
 
+
   if ((current_time - g_shed_data.app_timers.network_timer) > NETWORK_TASK_CHECK) {
     g_shed_data.network_info.connected = g_network_manager.isConnected();
     if (g_shed_data.network_info.connected) {
@@ -358,34 +373,52 @@ networkState_icon convertRSSIToIcon() {
   }
 }
 
+#define DOOR_OPEN true
+#define DOOR_CLOSED false
+void doorStateChanged(bool DS) {
 
-void doorStateChanged()
-{
+  g_shed_data.door_status.current_state = DS;
 
+  if (DS == DOOR_OPEN) {
+    PRINTOUT("DOOR STATE CHANGED - open");
+    wake_up();
+  } else {
+    PRINTOUT("DOOR STATE CHANGED - closed");
+    //The door state has changed update
+    start_sleep_countdown();
+  }
 }
 
+
+void start_sleep_countdown() {
+  g_shed_data.app_timers.sys_sleep_timer = COUNTDOWN_TIME_SECONDS;
+  g_shed_data.sleep_countdown_act = true;
+}
+
+void wake_up() {
+  g_shed_data.app_timers.sys_sleep_timer = 0;
+  g_shed_data.sleep_countdown_act = false;
+
+  //wake the system
+  g_shed_data.system_asleep = false;
+}
 
 
 void checkDoorState() {
   DateTime tmpDT;
-  bool doorState = (digitalRead(DOOR_STATUS_PIN) == HIGH) ? true : false;
+  bool doorState = (digitalRead(DOOR_STATUS_PIN) == HIGH) ? DOOR_OPEN : DOOR_CLOSED;
   if (doorState != g_shed_data.door_status.current_state) {
     //debounce
     if (button_debounce < DOOR_STS_DEBOUNCE_COUNT) {
       button_debounce++;
     } else {
-
-      PRINTOUT("DOOR STATE CHANGED");
-
-      //The door state has changed update
-      g_shed_data.door_status.current_state = doorState;
-
       if (g_shed_data.door_status.current_state)
         g_shed_data.door_status.open_counter++;
 
       if (g_rtc_driver.getLatestTime(&tmpDT)) {
         g_shed_data.door_status.last_opened = tmpDT;
       }
+      doorStateChanged(doorState);
     }
   } else {
     button_debounce = 0;
@@ -395,15 +428,20 @@ void checkDoorState() {
 
 void loop() {
 
-  //g_IOEXP_driver.set_relay_pins(true, true, true, true);
-  //delay(2000);
-  //g_IOEXP_driver.set_relay_pins(false, false, false, false);
-  //Serial.println("wjhopg");
-
-
 
   //Do all time related tasks... blocking.
   check_task_timers();
   checkDoorState();  //check the door state
+
+  g_IOEXP_driver.set_statusLED_pin(g_shed_data.door_status.current_state);
+
+  if (g_shed_data.sleep_countdown_act) {
+    if (g_shed_data.app_timers.sys_sleep_timer == 0) {
+      //timer exp
+      g_shed_data.system_asleep = true;
+      g_shed_data.sleep_countdown_act = false;
+    }
+  }
+  timer.tick(); // tick the timer
   delay(MAIN_LOOP_DELAY);
 }

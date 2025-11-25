@@ -4,7 +4,7 @@
 
 #define DEBUG_ENVIRONMENTS 0
 
-#define DOOR_STATUS_PIN   A5
+#define DOOR_STATUS_PIN A5
 
 /*************************NETWORK *********************/
 #define SECRET_SSID "fudgemesh"
@@ -53,9 +53,10 @@ use the below defines to set the states so it is synchronised with the hardware.
 
 #define ENVIRONMENT_SAMPLE_TIME 5000
 #define LED_DEFAULT_TIME 5000
-#define SCREEN_UPDATE_TIME 500
+#define SCREEN_UPDATE_TIME 250
 #define NETWORK_TASK_CHECK 10000
 #define RTC_TIMER_TASK 30000
+#define COUNTDOWN_TIME_SECONDS 180
 
 typedef unsigned long UL_TIMER_t;
 
@@ -64,7 +65,9 @@ typedef struct {
   UL_TIMER_t led_timer = LED_DEFAULT_TIME;
   UL_TIMER_t screen_timer = SCREEN_UPDATE_TIME;
   UL_TIMER_t network_timer = NETWORK_TASK_CHECK;
-  unsigned long rtc_timer = RTC_TIMER_TASK;
+  UL_TIMER_t rtc_timer = RTC_TIMER_TASK;
+  UL_TIMER_t sys_sleep_timer;
+
 } APP_TIMERS;
 
 
@@ -101,14 +104,14 @@ typedef struct {
   DateTime last_opened;
 } DOOR_STATUS;
 
-typedef struct{
+typedef struct {
   bool connected;
 
   String ip;
 
   long latest_RSSI;
 
-}NETWORK_INFO;
+} NETWORK_INFO;
 
 
 typedef struct {
@@ -117,14 +120,15 @@ typedef struct {
   POWER_STATES power_states;
 
   bool system_asleep = false;  //If sleeping, all modules should be in lowest power mode.
+  bool sleep_countdown_act = false;
 
   APP_TIMERS app_timers;
 
   DOOR_STATUS door_status;
 
-  DateTime    last_timestammp;
+  DateTime last_timestammp;
 
-  NETWORK_INFO  network_info;
+  NETWORK_INFO network_info;
 } SHED_APP;
 
 #endif

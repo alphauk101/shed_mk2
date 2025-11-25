@@ -31,7 +31,7 @@ bool IOEXP_DRV::task() {
   }
 
 
-  
+
   if ((port & (1 << SWT_2_BP)) == 0) {
     this->BTN_B_PRESSED = true;
   }
@@ -53,12 +53,19 @@ bool IOEXP_DRV::poweron_setup() {
 
 
 void IOEXP_DRV::set_statusLED_pin(bool L2) {
+
+  uint8_t tmp_reg = this->PORTB_PIN_STATE;
+
   if (!L2) {
-    this->PORTB_PIN_STATE |= (1 << LED_2_BP);
+    tmp_reg |= (1 << LED_2_BP);
   } else {
-    this->PORTB_PIN_STATE &= ~(1 << LED_2_BP);
+    tmp_reg &= ~(1 << LED_2_BP);
   }
-  mcp.writePort(MCP23017Port::B, this->PORTB_PIN_STATE);
+
+  if (tmp_reg != this->PORTB_PIN_STATE) {
+    this->PORTB_PIN_STATE = tmp_reg;
+    mcp.writePort(MCP23017Port::B, this->PORTB_PIN_STATE);
+  }
 }
 
 

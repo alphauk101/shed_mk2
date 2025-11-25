@@ -56,6 +56,7 @@ typedef enum {
   CS_extTemperature,
   CS_intTemperature,
   CS_intHumidity,
+  CS_countdown,
   CS_DoorState,
 } currentScreen;
 
@@ -66,6 +67,7 @@ typedef struct {
   currentScreen current_screen;
   POWER_STATES power_states;
   bool update_power_states;
+  bool screenBL_state;
   UL_TIMER_t screen_change_timer;
 } SCREEN_DATA;
 static SCREEN_DATA g_screen_data;
@@ -86,9 +88,12 @@ void SCRNDRV::init() {
 
   g_screen_data.update_power_states = true;
 
+
   //Reset the screen to ensure ready state
   this->doReset();
   tft.begin(SPI_SPEED);
+  //set to false to force on
+  g_screen_data.screenBL_state = false;
   this->fadeBackLight(true);
   //this->setStartUpMessage();
 
@@ -123,7 +128,7 @@ void SCRNDRV::setStartUpMessage() {
 
   //No need to check previous screen, just populate.
   g_screen_data.current_screen = CS_startup;
-  this->setDefaultScreenLayout(STARTUP_MESSAGE);
+  this->setDefaultScreenLayout(false, STARTUP_MESSAGE);
   this->setNetworkIcon();  //Update this if necessary
 }
 
@@ -193,18 +198,22 @@ void SCRNDRV::fadeBackLight(bool dir) {
   // This 'for' loop starts with brightness at 0,
   // and keeps looping as long as brightness is less than or equal to 255.
   // In each loop, it increases brightness by 1.
-  for (int brightness = 0; brightness <= 255; brightness++) {
 
-    // Set the LED's brightness to the current value
-    if (dir) {
-      analogWrite(BACKLIGHT_PIN, (255 - brightness));
-    } else {
-      analogWrite(BACKLIGHT_PIN, brightness);
+  if (g_screen_data.screenBL_state != dir) {
+    for (int brightness = 0; brightness <= 255; brightness++) {
+
+      // Set the LED's brightness to the current value
+      if (dir) {
+        analogWrite(BACKLIGHT_PIN, (255 - brightness));
+      } else {
+        analogWrite(BACKLIGHT_PIN, brightness);
+      }
+      // This delay is crucial. It pauses the code for 10 milliseconds
+      // so your eye can perceive the change in brightness.
+      // Try changing this value to speed up or slow down the fade.
+      delay(10);
     }
-    // This delay is crucial. It pauses the code for 10 milliseconds
-    // so your eye can perceive the change in brightness.
-    // Try changing this value to speed up or slow down the fade.
-    delay(10);
+    g_screen_data.screenBL_state = dir;
   }
 }
 
@@ -216,7 +225,18 @@ void SCRNDRV::setNetworkState(networkState_icon state) {
 
 /*This sets the default screen layout but does not set the 
 main content as it may change*/
-void SCRNDRV::setDefaultScreenLayout(const std::string& title_str) {
+static std::string last_message;
+void SCRNDRV::setDefaultScreenLayout(bool update_if_changed = false, const std::string& title_str = "") {
+
+
+  if (update_if_changed) {
+    if (last_message == title_str) {
+      return;  //dont update
+    }
+  }
+
+  last_message = title_str;
+
   tft.fillScreen(ILI9341_WHITE);
   tft.setRotation(DEFAULT_ORIENTATION);
   //Draw the top line divider
@@ -250,6 +270,7 @@ void SCRNDRV::setDefaultScreenLayout(const std::string& title_str) {
 
   tft.setTextColor(ILI9341_BLACK);
   tft.setFont(TITLE_FONT);
+  tft.setTextSize(0);
   tft.print(title_str.c_str());
 }
 
@@ -309,6 +330,7 @@ void SCRNDRV::showPowerStates() {
   if (g_screen_data.update_power_states) {
 
     tft.setFont(DEFAULT_FONT);
+    tft.setTextSize(0);
 
     if (g_screen_data.power_states.lights) {
       //draw green
@@ -393,43 +415,64 @@ void SCRNDRV::setNetworkIcon() {
 float tmp_inttemp = 0;
 float tmp_exttemp = 0;
 float tmp_humidity = 0;
+UL_TIMER_t sleep_countdown = 0;
 bool info_shown = false;
-void SCRNDRV::task(bool sys_aleep, SHED_APP* shd_data) {
+void SCRNDRV::task(bool sys_sleep, SHED_APP* shd_data) {
+
+  //the fxn will deal with the repeat calls.
+  bool BLstate = (sys_sleep) ? false : true;
+  this->fadeBackLight(BLstate);
 
   //check if the timer has elapsed and change the screen accordingly.
   unsigned long current_time = millis();
-  if ((current_time - g_screen_data.screen_change_timer) > SCREEN_CHANGE_TIMEOUT) {
-    //change screen time
-    this->changeSreen();
+  if (!shd_data->sleep_countdown_act) 
+  {
 
-    //reset screen dependant flags/vars here
-    tmp_inttemp = 0;
-    tmp_exttemp = 0;
-    tmp_humidity = 0;
-    info_shown = false;
-    g_screen_data.update_power_states = true;
-    g_screen_data.current_network_icon = signal_none;
+    if ((current_time - g_screen_data.screen_change_timer) > SCREEN_CHANGE_TIMEOUT) {
+      //change screen time
+      this->changeSreen();
+
+      //reset screen dependant flags/vars here
+      tmp_inttemp = 0;
+      tmp_exttemp = 0;
+      tmp_humidity = 0;
+      sleep_countdown = 0;
+      info_shown = false;
+      g_screen_data.update_power_states = true;
+      g_screen_data.current_network_icon = signal_none;
+    }
+
+    switch (g_screen_data.current_screen) {
+      case CS_intTemperature:
+        this->SCREENLAYOUT_internalTemp(shd_data);
+        break;
+      case CS_extTemperature:
+        this->SCREENLAYOUT_ExternalTemp(shd_data);
+        break;
+      case CS_intHumidity:
+        this->SCREENLAYOUT_internalHumd(shd_data);
+        break;
+      case CS_DoorState:
+        this->SCREENLAYOUT_Information(shd_data);
+        break;
+      default:
+        break;
+    }
+  } else {
+
+    if(g_screen_data.current_screen != CS_countdown)
+    {
+      this->setDefaultScreenLayout(false, "Sleep timer");
+      //first time set initial properties
+      g_screen_data.update_power_states = true;
+    }
+
+    //special case if system is in countdown mode
+    this->SCREENLAYOUT_countdown(shd_data);
+    MCR_SET_CURRENT_SCREEN(CS_countdown);
   }
 
-  //now display the screen based on nthe selected layout
 
-
-  switch (g_screen_data.current_screen) {
-    case CS_intTemperature:
-      this->SCREENLAYOUT_internalTemp(shd_data);
-      break;
-    case CS_extTemperature:
-      this->SCREENLAYOUT_ExternalTemp(shd_data);
-      break;
-    case CS_intHumidity:
-      this->SCREENLAYOUT_internalHumd(shd_data);
-      break;
-    case CS_DoorState:
-      this->SCREENLAYOUT_Information(shd_data);
-      break;
-    default:
-      break;
-  }
 }
 
 
@@ -440,36 +483,53 @@ void SCRNDRV::changeSreen() {
   switch (g_screen_data.current_screen) {
     case CS_intTemperature:
       MCR_SET_CURRENT_SCREEN(CS_extTemperature);
-      this->setDefaultScreenLayout("Outdoor Temperature");
+      this->setDefaultScreenLayout(false,"Outdoor Temperature");
       break;
     case CS_extTemperature:
       MCR_SET_CURRENT_SCREEN(CS_intHumidity);
-      this->setDefaultScreenLayout("Indoor Humidity");
+      this->setDefaultScreenLayout(false,"Indoor Humidity");
       break;
     case CS_intHumidity:
       MCR_SET_CURRENT_SCREEN(CS_DoorState);
-      this->setDefaultScreenLayout("Information");
+      this->setDefaultScreenLayout(false,"Information");
       break;
     case CS_DoorState:
       MCR_SET_CURRENT_SCREEN(CS_intTemperature);
-      this->setDefaultScreenLayout("Indoor Temperature");
+      this->setDefaultScreenLayout(false,"Indoor Temperature");
       break;
     default:
       //everything ..defaults to indoor temp
       MCR_SET_CURRENT_SCREEN(CS_intTemperature);
-      this->setDefaultScreenLayout("Indoor Temperature");
+      this->setDefaultScreenLayout(false,"Indoor Temperature");
       break;
   }
   //reset the timer from here to allow this fxn from other places
   g_screen_data.screen_change_timer = millis();
 }
 
-
-
-
-
-
 /*********Below are the different screen layouts**************/
+
+
+
+void SCRNDRV::SCREENLAYOUT_countdown(SHED_APP* shd_data) {
+
+  if (shd_data->app_timers.sys_sleep_timer != sleep_countdown) {
+    
+    sleep_countdown = shd_data->app_timers.sys_sleep_timer;
+    //Clears the dynamic part of the active screen
+    this->clearDynamicSection(ILI9341_WHITE);
+
+    tft.setTextColor(ILI9341_BLACK);
+    tft.setTextSize(2);
+    tft.setFont(HUGE_FONT);
+    tft.setCursor(100, 140);
+    tft.print(sleep_countdown);
+    //tft.print();
+  }
+  //do additional screen tasks here to avoid overwriting
+  MCR_MAND_TASK_FXN;
+}
+
 
 void SCRNDRV::SCREENLAYOUT_internalTemp(SHED_APP* shd_data) {
 
@@ -594,7 +654,7 @@ void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data) {
     this->clearDynamicSection(ILI9341_WHITE);
     tft.setFont(DEFAULT_FONT);
     tft.setTextColor(ILI9341_BLACK);
-    int Y_cursor = 65;
+    int Y_cursor = 46;
     //Reusing the start up screen message.
 
     tft.setCursor(TEXT_START_X, Y_cursor);
@@ -608,19 +668,19 @@ void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data) {
     Y_cursor += FONT_HEIGHT;
     tft.setCursor(TEXT_START_X, Y_cursor);
 
-    /*Timestamp*/
-    tft.print("Time: ");
-    tft.print(shd_data->last_timestammp.year(), DEC);
-    tft.print('/');
-    tft.print(shd_data->last_timestammp.month(), DEC);
-    tft.print('/');
-    tft.print(shd_data->last_timestammp.day(), DEC);
-    tft.print(' ');
-    tft.print(shd_data->last_timestammp.hour(), DEC);
+    tft.print("Last open: ");
+    tft.print(shd_data->door_status.last_opened.hour(), DEC);
     tft.print(':');
-    tft.print(shd_data->last_timestammp.minute(), DEC);
+    tft.print(shd_data->door_status.last_opened.minute(), DEC);
+
+    tft.print(' ');
+    tft.print(shd_data->door_status.last_opened.day(), DEC);
+    tft.print('/');
+    tft.print(shd_data->door_status.last_opened.month(), DEC);
+
     Y_cursor += FONT_HEIGHT;
     tft.setCursor(TEXT_START_X, Y_cursor);
+
     /**********************************/
 
     if (shd_data->network_info.connected) {
@@ -637,6 +697,19 @@ void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data) {
     } else {
       tft.print("Network: disconnected ");
     }
+    Y_cursor += FONT_HEIGHT;
+    tft.setCursor(TEXT_START_X, Y_cursor);
+    /*Timestamp*/
+    tft.print("Time: ");
+    tft.print(shd_data->last_timestammp.hour(), DEC);
+    tft.print(':');
+    tft.print(shd_data->last_timestammp.minute(), DEC);
+    tft.print(' ');
+    tft.print(shd_data->last_timestammp.day(), DEC);
+    tft.print('/');
+    tft.print(shd_data->last_timestammp.month(), DEC);
+    tft.print('/');
+    tft.print(shd_data->last_timestammp.year(), DEC);
     Y_cursor += FONT_HEIGHT;
     tft.setCursor(TEXT_START_X, Y_cursor);
 

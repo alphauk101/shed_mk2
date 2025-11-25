@@ -44,7 +44,8 @@ public:
   void setPowerStates(bool light, bool fan, bool blower, bool misc);
 private:
   void doReset(void);
-  void setDefaultScreenLayout(const std::string&);
+  //void setDefaultScreenLayout(const std::string&);
+  void setDefaultScreenLayout(bool change_on_update, const std::string&);
   void setNetworkIcon(void);
   void fadeBackLight(bool);
   void changeSreen(void);
@@ -53,6 +54,7 @@ private:
   void SCREENLAYOUT_internalHumd(SHED_APP*);
   void SCREENLAYOUT_ExternalTemp(SHED_APP*);
   void SCREENLAYOUT_Information(SHED_APP*);
+  void SCREENLAYOUT_countdown(SHED_APP*);
   void clearDynamicSection(uint16_t);
   void showPowerStates(void);
   String uptimeString(unsigned long);

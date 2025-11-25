@@ -137,7 +137,7 @@ void SHDPIXEL::init() {
 /*
 Converts given temperature into a colour red hottest, blue coldest and shows
 LED colours*/
-#define FADE_SPEED      5
+#define FADE_SPEED 5
 void SHDPIXEL::show_temperature_as_color(float temperature) {
   //if asleep then return here.
   MCR_SLEEP_GUARD();
@@ -153,7 +153,7 @@ void SHDPIXEL::show_temperature_as_color(float temperature) {
     g_led_data.last_temperature = idx;
     uint32_t colour = strip.Color(redToBlue[idx][0], redToBlue[idx][1], redToBlue[idx][2]);
 
-    uint32_t tmp_col = strip.getPixelColor(0); 
+    uint32_t tmp_col = strip.getPixelColor(0);
     for (int a = DEFAULT_BRIGHTNESS; a > 0; a--) {
       strip.fill(tmp_col, 0, LED_COUNT);
       strip.setBrightness(a);
@@ -172,11 +172,15 @@ void SHDPIXEL::show_temperature_as_color(float temperature) {
 
 void SHDPIXEL::task(bool asleep) {
   //Theres not much to do here however, if the system is asleep all leds should be off.
-  g_led_data.g_sys_asleep = asleep;
 
-  if (g_led_data.g_sys_asleep) {
-    //Turn everything off.
-    MCR_CLEAR_STRIP;
+
+  if (g_led_data.g_sys_asleep != asleep) {
+    g_led_data.g_sys_asleep = asleep;
+    if (g_led_data.g_sys_asleep) {
+      //Turn everything off.
+      MCR_CLEAR_STRIP;
+      g_led_data.last_temperature = 0;
+    }
   }
 }
 
