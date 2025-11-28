@@ -29,9 +29,11 @@ This will apply to the others ie. lights will be on NO ie. not on regularly
 use the below defines to set the states so it is synchronised with the hardware.
 */
 
+#define BUTTON_A    1
+#define BUTTON_B    2
+
 #define RELAY_ON false
 #define RELAY_OFF true
-
 
 #define RELAY_FAN_OFF RELAY_ON  //Spends most time in ON
 #define RELAY_FAN_ON RELAY_OFF

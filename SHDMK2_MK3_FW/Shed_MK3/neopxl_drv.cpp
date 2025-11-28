@@ -104,8 +104,6 @@ constexpr uint8_t boxwipe_side_index[][2]{
 
 };
 
-
-
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 
@@ -132,6 +130,31 @@ void SHDPIXEL::init() {
 
   g_led_data.g_sys_asleep = false;
   g_led_data.last_temperature = 0;
+}
+
+uint32_t SHDPIXEL::convert_color_to_32bit(int col) {
+  uint32_t out_colour = 0;
+  switch (col) {
+    case PXL_RED:
+      out_colour = strip.Color(255, 0, 0);
+      break;
+    case PXL_GREEN:
+      out_colour = strip.Color(0, 255, 0);
+      break;
+    case PXL_BLUE:
+      out_colour = strip.Color(0, 0, 255);
+      break;
+  }
+  return out_colour;
+}
+
+
+void SHDPIXEL::show_action_swipe(int color) 
+{
+  uint32_t colour = this->convert_color_to_32bit(color);
+
+  this->box_wipe(true, 50, colour);
+  this->box_wipe(false, 50, colour);
 }
 
 /*
@@ -172,8 +195,6 @@ void SHDPIXEL::show_temperature_as_color(float temperature) {
 
 void SHDPIXEL::task(bool asleep) {
   //Theres not much to do here however, if the system is asleep all leds should be off.
-
-
   if (g_led_data.g_sys_asleep != asleep) {
     g_led_data.g_sys_asleep = asleep;
     if (g_led_data.g_sys_asleep) {

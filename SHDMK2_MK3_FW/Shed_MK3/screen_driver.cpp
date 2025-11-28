@@ -320,6 +320,10 @@ void SCRNDRV::setPowerStates(bool light, bool fan, bool blower, bool misc) {
   }
 }
 
+void SCRNDRV::changeViewingScreen() {
+  this->changeSreen();
+}
+
 
 #define PS_BGCOLOUR_ON ILI9341_GREEN
 #define PS_FONTCOL_ON ILI9341_BLACK
@@ -425,8 +429,7 @@ void SCRNDRV::task(bool sys_sleep, SHED_APP* shd_data) {
 
   //check if the timer has elapsed and change the screen accordingly.
   unsigned long current_time = millis();
-  if (!shd_data->sleep_countdown_act) 
-  {
+  if (!shd_data->sleep_countdown_act) {
 
     if ((current_time - g_screen_data.screen_change_timer) > SCREEN_CHANGE_TIMEOUT) {
       //change screen time
@@ -460,8 +463,7 @@ void SCRNDRV::task(bool sys_sleep, SHED_APP* shd_data) {
     }
   } else {
 
-    if(g_screen_data.current_screen != CS_countdown)
-    {
+    if (g_screen_data.current_screen != CS_countdown) {
       this->setDefaultScreenLayout(false, "Sleep timer");
       //first time set initial properties
       g_screen_data.update_power_states = true;
@@ -471,8 +473,6 @@ void SCRNDRV::task(bool sys_sleep, SHED_APP* shd_data) {
     this->SCREENLAYOUT_countdown(shd_data);
     MCR_SET_CURRENT_SCREEN(CS_countdown);
   }
-
-
 }
 
 
@@ -483,24 +483,24 @@ void SCRNDRV::changeSreen() {
   switch (g_screen_data.current_screen) {
     case CS_intTemperature:
       MCR_SET_CURRENT_SCREEN(CS_extTemperature);
-      this->setDefaultScreenLayout(false,"Outdoor Temperature");
+      this->setDefaultScreenLayout(false, "Outdoor Temperature");
       break;
     case CS_extTemperature:
       MCR_SET_CURRENT_SCREEN(CS_intHumidity);
-      this->setDefaultScreenLayout(false,"Indoor Humidity");
+      this->setDefaultScreenLayout(false, "Indoor Humidity");
       break;
     case CS_intHumidity:
       MCR_SET_CURRENT_SCREEN(CS_DoorState);
-      this->setDefaultScreenLayout(false,"Information");
+      this->setDefaultScreenLayout(false, "Information");
       break;
     case CS_DoorState:
       MCR_SET_CURRENT_SCREEN(CS_intTemperature);
-      this->setDefaultScreenLayout(false,"Indoor Temperature");
+      this->setDefaultScreenLayout(false, "Indoor Temperature");
       break;
     default:
       //everything ..defaults to indoor temp
       MCR_SET_CURRENT_SCREEN(CS_intTemperature);
-      this->setDefaultScreenLayout(false,"Indoor Temperature");
+      this->setDefaultScreenLayout(false, "Indoor Temperature");
       break;
   }
   //reset the timer from here to allow this fxn from other places
@@ -514,7 +514,7 @@ void SCRNDRV::changeSreen() {
 void SCRNDRV::SCREENLAYOUT_countdown(SHED_APP* shd_data) {
 
   if (shd_data->app_timers.sys_sleep_timer != sleep_countdown) {
-    
+
     sleep_countdown = shd_data->app_timers.sys_sleep_timer;
     //Clears the dynamic part of the active screen
     this->clearDynamicSection(ILI9341_WHITE);

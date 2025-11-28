@@ -59,6 +59,23 @@ bool onehz_callback(void *)
   return true;
 }
 
+/*Callback from IOExp when button is pressed.*/
+static void bttn_callback(int button, bool state)
+{
+
+  switch(button)
+  {
+    case BUTTON_A:
+    //Changes screen when pressed
+    if(state) g_screen_driver.changeViewingScreen();
+    break;
+    case BUTTON_B:
+    break;
+    default:
+    break;
+  }
+}
+
 //#define NO_DELAY_STARTUP
 void setup() {
   // put your setup code here, to run once:
@@ -92,7 +109,7 @@ void setup() {
 
 
   //setup ios
-  if (g_IOEXP_driver.poweron_setup()) {
+  if (g_IOEXP_driver.poweron_setup(bttn_callback)) {
     //set default states
     g_IOEXP_driver.set_relay_pins(RELAY_FAN_OFF, RELAY_DRYER_OFF, REALY_LIGHT_OFF, RELAY_MISC_OFF);
     g_screen_driver.updateStartUpMessage("IO Expander... OK", "", "", "", "", "", "");
@@ -330,26 +347,11 @@ static void check_task_timers() {
     }
     g_shed_data.app_timers.rtc_timer = current_time;
   }
-  //Check if buttons pressed.
-  if (g_IOEXP_driver.task()) {
-    get_btton_press();
-  }
+
+  g_IOEXP_driver.task();
 }
 
 
-void get_btton_press() {
-  bool btnA = false;
-  bool btnB = false;
-  //This resets the button pressed state
-  g_IOEXP_driver.get_pressed_buttons(&btnA, &btnB);
-  if (btnA) {
-    PRINTOUT("Button A PRESSED!");
-  }
-
-  if (btnB) {
-    PRINTOUT("Button B PRESSED!");
-  }
-}
 
 
 networkState_icon convertRSSIToIcon() {

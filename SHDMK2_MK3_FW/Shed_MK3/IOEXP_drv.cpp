@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <MCP23017.h>
 #include "IOEXP_drv.h"
+#include "shdmk3_config.h"
 
 MCP23017 mcp = MCP23017(0x21);
 
@@ -25,25 +26,36 @@ void IOEXP_DRV::get_pressed_buttons(bool *btnA, bool *btnB) {
 }
 
 bool IOEXP_DRV::task() {
+  bool BA, BB;
+
   uint8_t port = mcp.readPort(MCP23017Port::B);
   if ((port & (1 << SWT_1_BP)) == 0) {
-    this->BTN_A_PRESSED = true;
+    BA = true;
   }
-
-
-
   if ((port & (1 << SWT_2_BP)) == 0) {
-    this->BTN_B_PRESSED = true;
+    BB = true;
   }
+
+  if (BA != this->BTN_A_PRESSED) {
+    this->BTN_A_PRESSED = BA;
+    this->btn_evt_callback(BUTTON_A, this->BTN_A_PRESSED);
+  }
+
+  if (BB != this->BTN_B_PRESSED) {
+    this->BTN_B_PRESSED = BB;
+    this->btn_evt_callback(BUTTON_B, this->BTN_B_PRESSED);
+  }
+
   return (this->BTN_B_PRESSED || this->BTN_A_PRESSED);
 }
 
 
-bool IOEXP_DRV::poweron_setup() {
+bool IOEXP_DRV::poweron_setup(void (*callback)(int, bool)) {
   // 0 = output
   mcp.portMode(MCP23017Port::A, 0);
   mcp.portMode(MCP23017Port::B, 0x03);
 
+  this->btn_evt_callback = callback;
   //Set all the relays to off
   this->set_relay_pins(false, false, false, false);
   this->set_statusLED_pin(false);

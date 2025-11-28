@@ -42,6 +42,7 @@ public:
   void setNetworkState(networkState_icon);
   void setShowNetConnect(void);
   void setPowerStates(bool light, bool fan, bool blower, bool misc);
+  void changeViewingScreen(void);
 private:
   void doReset(void);
   //void setDefaultScreenLayout(const std::string&);
