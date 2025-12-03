@@ -14,6 +14,8 @@
 
 #define DEFAULT_RELAY_STATE false
 
+#define MCR_SET_RELAY_STATES g_IOEXP_driver.set_relay_pins(g_shed_data.power_states.blower, g_shed_data.power_states.lights, g_shed_data.power_states.misc, g_shed_data.power_states.fan);
+
 #define PRINTOUT(X) Serial.println(X)
 
 uint8_t button_debounce = 0;
@@ -21,7 +23,7 @@ uint8_t button_debounce = 0;
 
 #define MAIN_LOOP_DELAY 10
 
-auto timer = timer_create_default(); // create a timer with default settings
+auto timer = timer_create_default();  // create a timer with default settings
 
 //Local drivers
 static IOEXP_DRV g_IOEXP_driver;
@@ -34,10 +36,25 @@ static RTCDRV g_rtc_driver;
 //Single point of truth for app data/manager
 static SHED_APP g_shed_data;
 
-
 UL_TIMER_t fw_led_timer = 0;
 static int RTC_fail_count = 0;
-#define MAX_RTC_ATTEMPTS 3  //If rtc fails to set, max amount before giving up so not to get IP blocked on the NTP
+
+
+/***
+  1hz timer callback useful for dec/inc in app timers
+***/
+bool onehz_callback(void *) {
+
+  //Tick the timers if necessary
+  if (g_shed_data.app_timers.sys_sleep_timer > 0)
+    g_shed_data.app_timers.sys_sleep_timer--;
+
+  if (g_shed_data.app_timers.dryer_timer > 0)
+    g_shed_data.app_timers.dryer_timer--;
+
+  return true;
+}
+
 
 static void RTC_callback_event(int evt) {
   switch (evt) {
@@ -49,30 +66,25 @@ static void RTC_callback_event(int evt) {
   }
 }
 
-bool onehz_callback(void *)
-{
-
-  //Tick the timers if necessary
-  if(g_shed_data.app_timers.sys_sleep_timer > 0)
-    g_shed_data.app_timers.sys_sleep_timer --;
-
-  return true;
-}
 
 /*Callback from IOExp when button is pressed.*/
-static void bttn_callback(int button, bool state)
-{
+static void bttn_callback(int button, bool state) {
 
-  switch(button)
-  {
+  switch (button) {
     case BUTTON_A:
-    //Changes screen when pressed
-    if(state) g_screen_driver.changeViewingScreen();
-    break;
+      //Changes screen when pressed
+      if (state) g_screen_driver.changeViewingScreen();
+      PRINTOUT("BUTTON A");
+      break;
     case BUTTON_B:
-    break;
+      PRINTOUT("BUTTON B");
+      //Add time to fan timer
+
+      if (state) g_shed_data.app_timers.dryer_timer += DRYER_TIME_MINUTES_SECS;
+      Serial.println(g_shed_data.app_timers.dryer_timer, DEC);
+      break;
     default:
-    break;
+      break;
   }
 }
 
@@ -92,7 +104,6 @@ void setup() {
   g_shed_data.power_states.lights = DEFAULT_RELAY_STATE;
   g_shed_data.power_states.fan = DEFAULT_RELAY_STATE;
   g_shed_data.power_states.misc = DEFAULT_RELAY_STATE;
-
   g_shed_data.door_status.current_state = false;
   g_shed_data.door_status.open_counter = 0;
 
@@ -101,17 +112,14 @@ void setup() {
   //MUST BE INIT'D BEFORE USING AN PERIPHERALS
   Wire.begin();
 
-  PRINTOUT("Shed MK3 - V0.1 ... Starting");
+  PRINTOUT("Shed MK3 - V0.2 ... Starting");
 
   g_screen_driver.init();
   g_screen_driver.setStartUpMessage();
   g_screen_driver.updateStartUpMessage("IO Expander...", "Internal Temp...", "Internal Humidity...", "External Temp...", "LED Driver...", "Network...", "RTC...");
 
-
   //setup ios
   if (g_IOEXP_driver.poweron_setup(bttn_callback)) {
-    //set default states
-    g_IOEXP_driver.set_relay_pins(RELAY_FAN_OFF, RELAY_DRYER_OFF, REALY_LIGHT_OFF, RELAY_MISC_OFF);
     g_screen_driver.updateStartUpMessage("IO Expander... OK", "", "", "", "", "", "");
   } else {
     g_screen_driver.updateStartUpMessage("IO Expander... ERROR!", "", "", "", "", "", "");
@@ -159,11 +167,30 @@ void setup() {
     g_screen_driver.updateStartUpMessage("", "", "", "", "", "", "RTC...ERROR");
   }
 
-timer.every(1000, onehz_callback);
+  timer.every(1000, onehz_callback);
 #ifndef NO_DELAY_STARTUP
   //Small delay to allow visual confirmation
   delay(2000);
 #endif
+
+  /*
+  while (1) {
+    g_shed_data.power_states.fan = false;
+    g_shed_data.power_states.blower = false;
+    g_shed_data.power_states.lights = true;
+    g_shed_data.power_states.misc = false;
+    //g_IOEXP_driver.set_relay_pins(true, true, true, true);+
+    MCR_SET_RELAY_STATES
+    delay(1000);
+    g_shed_data.power_states.fan = false;
+    g_shed_data.power_states.blower = false;
+    g_shed_data.power_states.lights = false;
+    g_shed_data.power_states.misc = false;
+    MCR_SET_RELAY_STATES
+    //g_IOEXP_driver.set_relay_pins(false, false, false, false);
+    delay(1000);
+  }
+  */
 }
 
 
@@ -248,7 +275,7 @@ static void get_environment_sensors() {
 
   if (!isnan(et)) {  // check if 'is not a number'
     g_shed_data.environmentals.external_temp = et;
-
+    check_fan_state();
 #if DEBUG_ENVIRONMENTS
     Serial.print("External temp *C = ");
     Serial.print(et);
@@ -265,6 +292,17 @@ static void get_environment_sensors() {
 #if DEBUG_ENVIRONMENTS
     Serial.println("Failed to read external temp sensor");
 #endif
+  }
+}
+
+
+void check_fan_state() {
+  if (g_shed_data.environmentals.external_temp < FAN_OFF_TEMPERATURE) {
+    g_shed_data.power_states.fan = true;
+  }
+
+  if (g_shed_data.environmentals.external_temp > FAN_ON_TEMPERATURE) {
+    g_shed_data.power_states.fan = false;
   }
 }
 
@@ -295,12 +333,6 @@ static void check_task_timers() {
 
   //Check screen
   if ((current_time - g_shed_data.app_timers.screen_timer) > SCREEN_UPDATE_TIME) {
-    g_screen_driver.setPowerStates(g_shed_data.power_states.lights,
-                                   g_shed_data.power_states.fan,
-                                   g_shed_data.power_states.blower,
-                                   g_shed_data.power_states.misc);
-
-
     networkState_icon net_icon = convertRSSIToIcon();
     g_screen_driver.setNetworkState(net_icon);
     g_screen_driver.task(g_shed_data.system_asleep, &g_shed_data);
@@ -333,6 +365,7 @@ static void check_task_timers() {
       PRINTOUT("RTC not set requesting time");
       if (g_network_manager.isConnected()) {
         if (RTC_fail_count < MAX_RTC_ATTEMPTS) {
+          //auto epoch = g_network_manager.getTime();
           unsigned long epoch = g_network_manager.getTime();
           RTC_fail_count++;
           if (epoch != 0) {
@@ -403,6 +436,9 @@ void wake_up() {
 
   //wake the system
   g_shed_data.system_asleep = false;
+
+
+  g_led_driver.show_action_swipe(PXL_RED);
 }
 
 
@@ -428,22 +464,47 @@ void checkDoorState() {
 }
 
 
-void loop() {
+void check_blower_relay_timer() {
+  //If this is greater than zero then dryer is on!
+  if (g_shed_data.app_timers.dryer_timer > 0) {
+    g_shed_data.power_states.blower = true;
+  } else {
+    g_shed_data.power_states.blower = false;
+  }
+}
 
+
+
+void loop() {
 
   //Do all time related tasks... blocking.
   check_task_timers();
   checkDoorState();  //check the door state
 
   g_IOEXP_driver.set_statusLED_pin(g_shed_data.door_status.current_state);
+  check_blower_relay_timer();
+
 
   if (g_shed_data.sleep_countdown_act) {
     if (g_shed_data.app_timers.sys_sleep_timer == 0) {
       //timer exp
       g_shed_data.system_asleep = true;
       g_shed_data.sleep_countdown_act = false;
+      g_shed_data.show_asleep_LEDS = SHOW_SLEEP_BLINKS;
     }
   }
-  timer.tick(); // tick the timer
+  //Set the lights, its ok to call the fxn repeatedly
+  g_shed_data.power_states.lights = (g_shed_data.system_asleep) ? false : true;
+
+  //show LED swipe to indicate asleep.
+  if(g_shed_data.show_asleep_LEDS > 0)
+  {
+    g_led_driver.box_wipe(true, 50, PXL_GREEN);
+    g_shed_data.show_asleep_LEDS--;
+  }
+
+
+  timer.tick();  // tick the timer
+  MCR_SET_RELAY_STATES;
   delay(MAIN_LOOP_DELAY);
 }

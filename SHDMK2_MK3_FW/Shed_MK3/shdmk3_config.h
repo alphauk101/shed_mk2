@@ -28,37 +28,43 @@ way the power will be less when the fan is on.
 This will apply to the others ie. lights will be on NO ie. not on regularly 
 use the below defines to set the states so it is synchronised with the hardware.
 */
+#define BUTTON_A                  1
+#define BUTTON_B                  2
 
-#define BUTTON_A    1
-#define BUTTON_B    2
+#define RELAY_ON                  false
+#define RELAY_OFF                 true
 
-#define RELAY_ON false
-#define RELAY_OFF true
+#define RELAY_FAN_OFF             RELAY_ON  //Spends most time in ON
+#define RELAY_FAN_ON              RELAY_OFF
 
-#define RELAY_FAN_OFF RELAY_ON  //Spends most time in ON
-#define RELAY_FAN_ON RELAY_OFF
+#define RELAY_BLOWER_OFF          RELAY_OFF  //Spends most time in OFF
+#define RELAY_BLOWER_ON           RELAY_ON    //Spends most time in OFF
 
-#define RELAY_DRYER_OFF RELAY_OFF  //Spends most time in OFF
-#define RELAY_DRYER_ON RELAY_ON    //Spends most time in OFF
+#define RELAY_LIGHT_OFF           RELAY_ON  //Spends most time in OFF
+#define RELAY_LIGHT_ON            RELAY_OFF  //Spends most time in OFF
 
-#define REALY_LIGHT_OFF RELAY_ON  //Spends most time in OFF
-#define REALY_LIGHT_ON RELAY_OFF  //Spends most time in OFF
+#define RELAY_MISC_OFF            RELAY_ON  //Spends most time in OFF
+#define RELAY_MISC_ON             RELAY_OFF  //Spends most time in OFF
 
-#define RELAY_MISC_OFF RELAY_ON  //Spends most time in OFF
-#define RELAY_MISC_ON RELAY_OFF  //Spends most time in OFF
+#define FAN_OFF_TEMPERATURE       3
+#define FAN_ON_TEMPERATURE        6
 
+#define SHOW_SLEEP_BLINKS         5
 
+#define MAX_RTC_ATTEMPTS          3  //If rtc fails to set, max amount before giving up so not to get IP blocked on the NTP
 
 /*
       APPLICATION TIME VALUES
 */
 
-#define ENVIRONMENT_SAMPLE_TIME 5000
-#define LED_DEFAULT_TIME 5000
-#define SCREEN_UPDATE_TIME 250
-#define NETWORK_TASK_CHECK 10000
-#define RTC_TIMER_TASK 30000
-#define COUNTDOWN_TIME_SECONDS 180
+#define ENVIRONMENT_SAMPLE_TIME     5000
+#define LED_DEFAULT_TIME            5000
+#define SCREEN_UPDATE_TIME          250
+#define NETWORK_TASK_CHECK          10000
+#define RTC_TIMER_TASK              30000
+#define COUNTDOWN_TIME_SECONDS      180
+//dryer time increments minutes (but for app in secs)
+#define DRYER_TIME_MINUTES_SECS      (10 * 60)
 
 typedef unsigned long UL_TIMER_t;
 
@@ -69,7 +75,7 @@ typedef struct {
   UL_TIMER_t network_timer = NETWORK_TASK_CHECK;
   UL_TIMER_t rtc_timer = RTC_TIMER_TASK;
   UL_TIMER_t sys_sleep_timer;
-
+  UL_TIMER_t dryer_timer = 0;
 } APP_TIMERS;
 
 
@@ -123,6 +129,7 @@ typedef struct {
 
   bool system_asleep = false;  //If sleeping, all modules should be in lowest power mode.
   bool sleep_countdown_act = false;
+  uint8_t show_asleep_LEDS = 0;
 
   APP_TIMERS app_timers;
 

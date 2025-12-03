@@ -59,6 +59,7 @@ private:
   void clearDynamicSection(uint16_t);
   void showPowerStates(void);
   String uptimeString(unsigned long);
+  void resetScreenVars(void);
 };
 
 

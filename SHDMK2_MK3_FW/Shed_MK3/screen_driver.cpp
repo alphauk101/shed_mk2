@@ -421,6 +421,17 @@ float tmp_exttemp = 0;
 float tmp_humidity = 0;
 UL_TIMER_t sleep_countdown = 0;
 bool info_shown = false;
+
+void SCRNDRV::resetScreenVars() {
+  tmp_inttemp = 0;
+  tmp_exttemp = 0;
+  tmp_humidity = 0;
+  sleep_countdown = 0;
+  info_shown = false;
+  g_screen_data.update_power_states = true;
+  g_screen_data.current_network_icon = signal_none;
+}
+
 void SCRNDRV::task(bool sys_sleep, SHED_APP* shd_data) {
 
   //the fxn will deal with the repeat calls.
@@ -434,15 +445,6 @@ void SCRNDRV::task(bool sys_sleep, SHED_APP* shd_data) {
     if ((current_time - g_screen_data.screen_change_timer) > SCREEN_CHANGE_TIMEOUT) {
       //change screen time
       this->changeSreen();
-
-      //reset screen dependant flags/vars here
-      tmp_inttemp = 0;
-      tmp_exttemp = 0;
-      tmp_humidity = 0;
-      sleep_countdown = 0;
-      info_shown = false;
-      g_screen_data.update_power_states = true;
-      g_screen_data.current_network_icon = signal_none;
     }
 
     switch (g_screen_data.current_screen) {
@@ -505,6 +507,9 @@ void SCRNDRV::changeSreen() {
   }
   //reset the timer from here to allow this fxn from other places
   g_screen_data.screen_change_timer = millis();
+
+  //reset screen dependant flags/vars here
+  this->resetScreenVars();
 }
 
 /*********Below are the different screen layouts**************/
