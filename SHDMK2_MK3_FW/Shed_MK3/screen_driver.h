@@ -15,14 +15,14 @@
 #define BACKLIGHT_OFF HIGH
 
 
-  typedef enum {
-    not_connected,
-    signal_bad,
-    signal_awful,
-    signal_ok,
-    signal_good,
-    signal_none,
-  } networkState_icon;
+typedef enum {
+  not_connected,
+  signal_bad,
+  signal_awful,
+  signal_ok,
+  signal_good,
+  signal_none,
+} networkState_icon;
 
 
 class SCRNDRV {
@@ -41,7 +41,6 @@ public:
                             const std::string& rtc_Status);
   void setNetworkState(networkState_icon);
   void setShowNetConnect(void);
-  void setPowerStates(bool light, bool fan, bool blower, bool misc);
   void changeViewingScreen(void);
 private:
   void doReset(void);
@@ -60,6 +59,7 @@ private:
   void showPowerStates(void);
   String uptimeString(unsigned long);
   void resetScreenVars(void);
+  void setPowerStates(bool light, bool fan, bool blower, bool misc);
 };
 
 

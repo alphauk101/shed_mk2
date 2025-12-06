@@ -3,13 +3,19 @@
 #include <SPI.h>
 #include <WiFiUdp.h>
 
-#define ENABLE_NTP //debugging only, prevents repeative calls to NTP
+#define ENABLE_NTP  //debugging only, prevents repeative calls to NTP
 
 
 char ssid[] = SECRET_SSID;    // your network SSID (name)
 char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
 int status = WL_IDLE_STATUS;  // the WiFi radio's status
 
+char server[] = "www.google.com";  // name address for Google (using DNS)
+
+// Initialize the Ethernet client library
+// with the IP address and port of the server
+// that you want to connect to (port 80 is default for HTTP):
+WiFiClient metricsClient;
 
 //const char timeServer[] = "time.nist.gov";  // time.nist.gov NTP server
 IPAddress timeServer(162, 159, 200, 123);  // pool.ntp.org NTP server
@@ -60,14 +66,65 @@ bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
   }
 }
 
+void NETMANAGER::task() {
+
+
+  //individual SM for web client tasks
+  this->do_client_task();
+}
+
+typedef enum {
+  idle,
+  started,
+  getServerResponse,
+} clientTask;
+static clientTask client_task = idle;
+void NETMANAGER::do_client_task() {
+  switch (client_task) {
+    case started:  //The web client has been requested
+      this->CT_start_request();
+      break;
+    case getServerResponse:
+      this->get_server_response();
+      this->cancel_client_task();
+      break;
+    default:  //do nothing in these tasks
+    case idle:
+      break;
+  }
+}
+
+void NETMANAGER::CT_start_request() {
+  if (this->isConnected()) {
+    //We are connected... crack on
+    if (this->start_client_connection()) {
+
+
+    } else {
+      //Client request failed.
+      this->cancel_client_task();
+    }
+  } else {
+    //cancel this request as we are not connected to internet
+    this->cancel_client_task();
+  }
+}
+
+/*
+Can be called at any time to cancel an on going client task.*/
+void NETMANAGER::cancel_client_task() 
+{
+  metricsClient.stop();
+  client_task = idle;
+}
+
+
 long NETMANAGER::getRSSI() {
   return WiFi.RSSI();
 }
 
-void NETMANAGER::getIP(String &ip_ptr)
-{
-  if(this->isConnected())
-  {
+void NETMANAGER::getIP(String& ip_ptr) {
+  if (this->isConnected()) {
     //IPAddress ip = WiFi.localIP();
     //String s = ip.toString();
     //ip_ptr = s;
@@ -80,7 +137,7 @@ bool NETMANAGER::isConnected() {
 }
 
 //String NETMANAGER::isConnected() {
-  //get ip and rssi for info screen 
+//get ip and rssi for info screen
 //}
 
 /*
@@ -126,6 +183,29 @@ void NETMANAGER::sendNTPpacket(IPAddress& address) {
   Udp.endPacket();
 }
 
+
+bool NETMANAGER::start_client_connection() {
+  bool result = false;
+  if (metricsClient.connect(server, 80)) {
+    Serial.println("connected to server");
+    // Make a HTTP request:
+    metricsClient.println("GET /search?q=arduino HTTP/1.1");
+    metricsClient.println("Host: www.google.com");
+    metricsClient.println("Connection: close");
+    metricsClient.println();
+    result = true;
+  }
+  return result;
+}
+
+void NETMANAGER::get_server_response() {
+  if (!metricsClient.connected()) {
+    while (metricsClient.available()) {
+      char c = metricsClient.read();
+      Serial.write(c);
+    }
+  }
+}
 
 unsigned long NETMANAGER::parseTimeFromPacket() {
   //uint8_t t_packet[3];
@@ -182,7 +262,3 @@ unsigned long NETMANAGER::parseTimeFromPacket() {
     return 0;
   }
 }
-
-
-
-

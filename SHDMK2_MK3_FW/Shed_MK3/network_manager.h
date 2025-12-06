@@ -17,6 +17,12 @@ private:
   unsigned long  parseTimeFromPacket(void);
   //void sendNTPpacket(const char *address);
   void sendNTPpacket(IPAddress&);
+  bool start_client_connection(void);
+  void get_server_response(void);
+  void do_client_task(void);
+  //anything with CT is a client task operation and shouldnt be called outside the SM
+  void CT_start_request(void);
+  void cancel_client_task(void);
 };
 
 #endif

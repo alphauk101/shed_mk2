@@ -437,7 +437,6 @@ void wake_up() {
   //wake the system
   g_shed_data.system_asleep = false;
 
-
   g_led_driver.show_action_swipe(PXL_RED);
 }
 
@@ -497,8 +496,7 @@ void loop() {
   g_shed_data.power_states.lights = (g_shed_data.system_asleep) ? false : true;
 
   //show LED swipe to indicate asleep.
-  if(g_shed_data.show_asleep_LEDS > 0)
-  {
+  if (g_shed_data.show_asleep_LEDS > 0) {
     g_led_driver.box_wipe(true, 50, PXL_GREEN);
     g_shed_data.show_asleep_LEDS--;
   }

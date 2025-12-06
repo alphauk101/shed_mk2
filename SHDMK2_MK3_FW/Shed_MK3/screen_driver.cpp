@@ -438,8 +438,15 @@ void SCRNDRV::task(bool sys_sleep, SHED_APP* shd_data) {
   bool BLstate = (sys_sleep) ? false : true;
   this->fadeBackLight(BLstate);
 
-  //check if the timer has elapsed and change the screen accordingly.
-  unsigned long current_time = millis();
+
+  this->setPowerStates(shd_data->power_states.lights,
+                       shd_data->power_states.fan,
+                       shd_data->power_states.blower,
+                       shd_data->power_states.misc);
+
+
+    //check if the timer has elapsed and change the screen accordingly.
+    unsigned long current_time = millis();
   if (!shd_data->sleep_countdown_act) {
 
     if ((current_time - g_screen_data.screen_change_timer) > SCREEN_CHANGE_TIMEOUT) {
