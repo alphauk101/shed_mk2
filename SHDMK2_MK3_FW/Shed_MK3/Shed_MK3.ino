@@ -52,6 +52,18 @@ bool onehz_callback(void *) {
   if (g_shed_data.app_timers.dryer_timer > 0)
     g_shed_data.app_timers.dryer_timer--;
 
+#if NETWORK_POST_METRICS_SECS > 0
+  if (g_shed_data.app_timers.network_post_data > NETWORK_POST_METRICS_SECS) {
+    PRINTOUT(">>>> Doing data post <<<<");
+    g_shed_data.app_timers.network_post_data = 0;
+    g_network_manager.do_metrics_post(&g_shed_data);
+  } else {
+    g_shed_data.app_timers.network_post_data++;
+  }
+#endif
+
+
+
   return true;
 }
 
@@ -168,29 +180,34 @@ void setup() {
   }
 
   timer.every(1000, onehz_callback);
+
+  //Turn the misc relay on to workaround the cheap chinese relay issue.
+  //g_shed_data.power_states.misc = RELAY_MISC_OFF;
+
+  /*
+  while (1) {
+    g_shed_data.power_states.misc = RELAY_OFF;
+    g_shed_data.power_states.blower = RELAY_OFF;
+    g_shed_data.power_states.fan = RELAY_OFF;
+    g_shed_data.power_states.lights = RELAY_OFF;
+    MCR_SET_RELAY_STATES;
+
+    delay(500);
+
+    g_shed_data.power_states.misc = RELAY_ON;
+    g_shed_data.power_states.blower = RELAY_OFF;
+    g_shed_data.power_states.fan = RELAY_OFF;
+    g_shed_data.power_states.lights = RELAY_OFF;
+    MCR_SET_RELAY_STATES;
+
+    delay(500);
+  }
+*/
+
 #ifndef NO_DELAY_STARTUP
   //Small delay to allow visual confirmation
   delay(2000);
 #endif
-
-  /*
-  while (1) {
-    g_shed_data.power_states.fan = false;
-    g_shed_data.power_states.blower = false;
-    g_shed_data.power_states.lights = true;
-    g_shed_data.power_states.misc = false;
-    //g_IOEXP_driver.set_relay_pins(true, true, true, true);+
-    MCR_SET_RELAY_STATES
-    delay(1000);
-    g_shed_data.power_states.fan = false;
-    g_shed_data.power_states.blower = false;
-    g_shed_data.power_states.lights = false;
-    g_shed_data.power_states.misc = false;
-    MCR_SET_RELAY_STATES
-    //g_IOEXP_driver.set_relay_pins(false, false, false, false);
-    delay(1000);
-  }
-  */
 }
 
 
@@ -298,11 +315,11 @@ static void get_environment_sensors() {
 
 void check_fan_state() {
   if (g_shed_data.environmentals.external_temp < FAN_OFF_TEMPERATURE) {
-    g_shed_data.power_states.fan = true;
+    g_shed_data.power_states.fan = RELAY_FAN_OFF;
   }
 
   if (g_shed_data.environmentals.external_temp > FAN_ON_TEMPERATURE) {
-    g_shed_data.power_states.fan = false;
+    g_shed_data.power_states.fan = RELAY_FAN_ON;
   }
 }
 
@@ -381,6 +398,8 @@ static void check_task_timers() {
     g_shed_data.app_timers.rtc_timer = current_time;
   }
 
+  //safe to call rapidly
+  g_network_manager.task();
   g_IOEXP_driver.task();
 }
 
@@ -437,7 +456,7 @@ void wake_up() {
   //wake the system
   g_shed_data.system_asleep = false;
 
-  g_led_driver.show_action_swipe(PXL_RED);
+  //g_led_driver.show_action_swipe(PXL_RED);
 }
 
 
@@ -452,8 +471,11 @@ void checkDoorState() {
       if (g_shed_data.door_status.current_state)
         g_shed_data.door_status.open_counter++;
 
-      if (g_rtc_driver.getLatestTime(&tmpDT)) {
-        g_shed_data.door_status.last_opened = tmpDT;
+        //grab last door closed as last door open is not useful when viewed.... you had to open it to view it!
+      if (doorState == DOOR_CLOSED) {
+        if (g_rtc_driver.getLatestTime(&tmpDT)) {
+          g_shed_data.door_status.last_opened = tmpDT;
+        }
       }
       doorStateChanged(doorState);
     }
@@ -466,9 +488,9 @@ void checkDoorState() {
 void check_blower_relay_timer() {
   //If this is greater than zero then dryer is on!
   if (g_shed_data.app_timers.dryer_timer > 0) {
-    g_shed_data.power_states.blower = true;
+    g_shed_data.power_states.blower = RELAY_BLOWER_ON;
   } else {
-    g_shed_data.power_states.blower = false;
+    g_shed_data.power_states.blower = RELAY_BLOWER_OFF;
   }
 }
 
@@ -483,7 +505,6 @@ void loop() {
   g_IOEXP_driver.set_statusLED_pin(g_shed_data.door_status.current_state);
   check_blower_relay_timer();
 
-
   if (g_shed_data.sleep_countdown_act) {
     if (g_shed_data.app_timers.sys_sleep_timer == 0) {
       //timer exp
@@ -493,7 +514,7 @@ void loop() {
     }
   }
   //Set the lights, its ok to call the fxn repeatedly
-  g_shed_data.power_states.lights = (g_shed_data.system_asleep) ? false : true;
+  g_shed_data.power_states.lights = (g_shed_data.system_asleep) ? RELAY_LIGHT_OFF : RELAY_LIGHT_ON;
 
   //show LED swipe to indicate asleep.
   if (g_shed_data.show_asleep_LEDS > 0) {

@@ -6,6 +6,12 @@
 #define RELAY_3_BP 2
 #define RELAY_4_BP 3
 
+#define FAN_RELAY_BP RELAY_4_BP
+#define BLOWER_RELAY_BP RELAY_3_BP
+#define MISC_RELAY_BP RELAY_2_BP
+#define LIGHT_RELAY_BP RELAY_1_BP
+
+
 #define SWT_1_BP 0
 #define SWT_2_BP 1
 

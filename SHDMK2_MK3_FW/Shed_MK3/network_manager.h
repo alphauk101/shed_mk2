@@ -13,6 +13,8 @@ public:
   unsigned long  getTime(void); //return secs from unix epoch
   bool isConnected(void);
   void getIP(String &ip_ptr);
+  /*Triggers a post operation to the server*/
+  void do_metrics_post(SHED_APP*);
 private:
   unsigned long  parseTimeFromPacket(void);
   //void sendNTPpacket(const char *address);

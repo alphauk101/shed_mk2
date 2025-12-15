@@ -114,30 +114,31 @@ void IOEXP_DRV::set_relay_pins(bool blower, bool lights, bool misc, bool fan) {
   /*Arranged to fit the hardware outputs*/
   uint8_t temp_port = (this->PORTA_PIN_STATE & (RELAY_1_BP | RELAY_2_BP | RELAY_3_BP | RELAY_4_BP));
 
-  if (blower == RELAY_BLOWER_OFF) {
-    temp_port |= (1 << RELAY_1_BP);
+  if (blower == RELAY_ON) {
+    temp_port |= (1 << BLOWER_RELAY_BP);
   } else {
-    temp_port &= ~(1 << RELAY_1_BP);
+    temp_port &= ~(1 << BLOWER_RELAY_BP);
   }
 
-  if (lights == RELAY_LIGHT_OFF) { //fan - inverted
-    temp_port |= (1 << RELAY_3_BP);
+  if (lights == RELAY_ON) { //fan - inverted
+    temp_port |= (1 << LIGHT_RELAY_BP);
   } else {
-    temp_port &= ~(1 << RELAY_3_BP);
+    temp_port &= ~(1 << LIGHT_RELAY_BP);
   }
 
-  if (misc == RELAY_MISC_OFF) {
-    temp_port |= (1 << RELAY_2_BP);
+  if (misc == RELAY_ON) {
+    temp_port |= (1 << MISC_RELAY_BP);
   } else {
-    temp_port &= ~(1 << RELAY_2_BP);
+    temp_port &= ~(1 << MISC_RELAY_BP);
   }
 
-  if (fan == RELAY_FAN_OFF) {
-    temp_port |= (1 << RELAY_4_BP);
+  if (fan == RELAY_ON) {
+    temp_port |= (1 << FAN_RELAY_BP);
   } else {
-    temp_port &= ~(1 << RELAY_4_BP);
+    temp_port &= ~(1 << FAN_RELAY_BP);
   }
 
+  //This allows this fxn to be called repeatively without unnecessary calls to the mcp
   if (temp_port != this->PORTA_PIN_STATE){
     this->PORTA_PIN_STATE = temp_port;
     mcp.writePort(MCP23017Port::A, this->PORTA_PIN_STATE);

@@ -336,7 +336,7 @@ void SCRNDRV::showPowerStates() {
     tft.setFont(DEFAULT_FONT);
     tft.setTextSize(0);
 
-    if (g_screen_data.power_states.lights) {
+    if (g_screen_data.power_states.lights == RELAY_LIGHT_ON) {
       //draw green
       tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
       tft.setTextColor(PS_FONTCOL_ON);
@@ -349,7 +349,7 @@ void SCRNDRV::showPowerStates() {
     tft.print("Light");
 
 
-    if (g_screen_data.power_states.fan) {
+    if (g_screen_data.power_states.fan == RELAY_FAN_ON) {
       //draw green
       tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 1) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
       tft.setTextColor(PS_FONTCOL_ON);
@@ -361,7 +361,7 @@ void SCRNDRV::showPowerStates() {
     tft.print("Fan");
 
 
-    if (g_screen_data.power_states.blower) {
+    if (g_screen_data.power_states.blower == RELAY_BLOWER_ON) {
       //draw green
       tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 2) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
       tft.setTextColor(PS_FONTCOL_ON);
@@ -373,7 +373,7 @@ void SCRNDRV::showPowerStates() {
     tft.print("Dryer");
 
 
-    if (g_screen_data.power_states.misc) {
+    if (g_screen_data.power_states.misc == RELAY_MISC_ON) {
       tft.setTextColor(PS_FONTCOL_ON);
       tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 3) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
     } else {

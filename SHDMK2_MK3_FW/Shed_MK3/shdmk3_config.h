@@ -31,20 +31,20 @@ use the below defines to set the states so it is synchronised with the hardware.
 #define BUTTON_A                  1
 #define BUTTON_B                  2
 
-#define RELAY_ON                  false
-#define RELAY_OFF                 true
+#define RELAY_ON                  true
+#define RELAY_OFF                 false
 
-#define RELAY_FAN_OFF             RELAY_ON  //Spends most time in ON
-#define RELAY_FAN_ON              RELAY_OFF
+#define RELAY_FAN_OFF             RELAY_OFF  //Spends most time in ON
+#define RELAY_FAN_ON              RELAY_ON
 
 #define RELAY_BLOWER_OFF          RELAY_OFF  //Spends most time in OFF
 #define RELAY_BLOWER_ON           RELAY_ON    //Spends most time in OFF
 
-#define RELAY_LIGHT_OFF           RELAY_ON  //Spends most time in OFF
-#define RELAY_LIGHT_ON            RELAY_OFF  //Spends most time in OFF
+#define RELAY_LIGHT_OFF           RELAY_OFF  //Spends most time in OFF
+#define RELAY_LIGHT_ON            RELAY_ON  //Spends most time in OFF
 
-#define RELAY_MISC_OFF            RELAY_ON  //Spends most time in OFF
-#define RELAY_MISC_ON             RELAY_OFF  //Spends most time in OFF
+#define RELAY_MISC_OFF            RELAY_OFF  //Spends most time in OFF
+#define RELAY_MISC_ON             RELAY_ON  //Spends most time in OFF
 
 #define FAN_OFF_TEMPERATURE       3
 #define FAN_ON_TEMPERATURE        6
@@ -64,7 +64,11 @@ use the below defines to set the states so it is synchronised with the hardware.
 #define RTC_TIMER_TASK              30000
 #define COUNTDOWN_TIME_SECONDS      180
 //dryer time increments minutes (but for app in secs)
-#define DRYER_TIME_MINUTES_SECS      (10 * 60)
+#define MINUTE                      60
+#define DRYER_TIME_MINUTES_SECS      (10 * MINUTE)
+
+#define NETWORK_POST_METRICS_SECS     (30 * MINUTE) //If this is zero then the task is not performed
+//#define NETWORK_POST_METRICS_SECS     (10) //If this is zero then the task is not performed
 
 typedef unsigned long UL_TIMER_t;
 
@@ -76,6 +80,7 @@ typedef struct {
   UL_TIMER_t rtc_timer = RTC_TIMER_TASK;
   UL_TIMER_t sys_sleep_timer;
   UL_TIMER_t dryer_timer = 0;
+  UL_TIMER_t network_post_data = 0;
 } APP_TIMERS;
 
 

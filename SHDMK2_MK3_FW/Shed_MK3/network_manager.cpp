@@ -2,6 +2,7 @@
 #include "shdmk3_config.h"
 #include <SPI.h>
 #include <WiFiUdp.h>
+#include <ArduinoHttpClient.h>
 
 #define ENABLE_NTP  //debugging only, prevents repeative calls to NTP
 
@@ -10,12 +11,23 @@ char ssid[] = SECRET_SSID;    // your network SSID (name)
 char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
 int status = WL_IDLE_STATUS;  // the WiFi radio's status
 
-char server[] = "www.google.com";  // name address for Google (using DNS)
+typedef enum {
+  idle,
+  started,
+  getServerResponse,
+} clientTask;
+static clientTask client_task = idle;
+static String postBody;
 
+//char server[] = "www.google.com";  // name address for Google (using DNS)
+char serverAddress[] = "192.168.5.193";
+int port = 3000;
 // Initialize the Ethernet client library
 // with the IP address and port of the server
 // that you want to connect to (port 80 is default for HTTP):
-WiFiClient metricsClient;
+WiFiClient WIFIclient;
+HttpClient httpClient = HttpClient(WIFIclient, serverAddress, port);
+
 
 //const char timeServer[] = "time.nist.gov";  // time.nist.gov NTP server
 IPAddress timeServer(162, 159, 200, 123);  // pool.ntp.org NTP server
@@ -29,6 +41,8 @@ WiFiUDP Udp;
 
 bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
   int timeout = 10;
+
+  postBody.reserve(256);
 
   // check for the WiFi module:
   if (WiFi.status() == WL_NO_MODULE) {
@@ -66,19 +80,40 @@ bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
   }
 }
 
-void NETMANAGER::task() {
+
+
+void NETMANAGER::do_metrics_post(SHED_APP* shddata_ptr) {
+  client_task = started;
+
+  String ds = (shddata_ptr->door_status.current_state)?"open":"closed";
+  String bl = (shddata_ptr->power_states.blower)?"on":"off"; 
+  String fan = (shddata_ptr->power_states.fan)?"on":"off"; 
+  String misc = (shddata_ptr->power_states.misc)?"on":"off"; 
+  String lis = (shddata_ptr->power_states.lights)?"on":"off"; 
+
+  postBody = "{\"Itemp\":\"" + String(shddata_ptr->environmentals.internal_temp)
+             + "\",\"Ihumid\":\"" + String(shddata_ptr->environmentals.internal_humidity)
+             + "\",\"DewPoint\":\"" + String(shddata_ptr->environmentals.internal_dewpoint)
+             + "\",\"Etemp\":\"" + String(shddata_ptr->environmentals.external_temp) 
+             + "\",\"DoorState\":\"" + ds
+             + "\",\"Blower\":\"" + bl
+             + "\",\"Fan\":\"" + fan
+             + "\",\"Misc\":\"" + misc
+             + "\",\"Lights\":\"" + lis
+             + "\"}";
+  Serial.print(postBody);
+}
+
+
+
+bool NETMANAGER::task() {
 
 
   //individual SM for web client tasks
   this->do_client_task();
 }
 
-typedef enum {
-  idle,
-  started,
-  getServerResponse,
-} clientTask;
-static clientTask client_task = idle;
+
 void NETMANAGER::do_client_task() {
   switch (client_task) {
     case started:  //The web client has been requested
@@ -98,8 +133,7 @@ void NETMANAGER::CT_start_request() {
   if (this->isConnected()) {
     //We are connected... crack on
     if (this->start_client_connection()) {
-
-
+      client_task = getServerResponse;
     } else {
       //Client request failed.
       this->cancel_client_task();
@@ -112,9 +146,8 @@ void NETMANAGER::CT_start_request() {
 
 /*
 Can be called at any time to cancel an on going client task.*/
-void NETMANAGER::cancel_client_task() 
-{
-  metricsClient.stop();
+void NETMANAGER::cancel_client_task() {
+  //metricsClient.stop();
   client_task = idle;
 }
 
@@ -185,26 +218,42 @@ void NETMANAGER::sendNTPpacket(IPAddress& address) {
 
 
 bool NETMANAGER::start_client_connection() {
-  bool result = false;
-  if (metricsClient.connect(server, 80)) {
-    Serial.println("connected to server");
-    // Make a HTTP request:
-    metricsClient.println("GET /search?q=arduino HTTP/1.1");
-    metricsClient.println("Host: www.google.com");
-    metricsClient.println("Connection: close");
-    metricsClient.println();
-    result = true;
-  }
+  bool result = true;
+
+  Serial.println("connecting to server");
+
+  //String postData = "{\"Itemp\":\"30\",\"Ihumid\":\"20\",\"DewPoint\":\"10\",\"Etemp\":\"-5\"}";
+  //Serial.println(postData);
+
+
+  httpClient.beginRequest();
+  httpClient.post("/api/shdep/");
+  httpClient.sendHeader("Content-Type", "application/json");
+  httpClient.sendHeader("Content-Length", postBody.length());
+  httpClient.sendHeader("X-Custom-Header", "custom-header-value");
+  httpClient.beginBody();
+  httpClient.print(postBody);
+  httpClient.endRequest();
+
+  Serial.println("connecting to server; completed.");
+
+
+  //  }
   return result;
 }
 
 void NETMANAGER::get_server_response() {
-  if (!metricsClient.connected()) {
-    while (metricsClient.available()) {
-      char c = metricsClient.read();
-      Serial.write(c);
-    }
-  }
+
+  // read the status code and body of the response
+  int statusCode = httpClient.responseStatusCode();
+  String response = httpClient.responseBody();
+#define OUTPUT_POST_REQ
+#ifdef OUTPUT_POST_REQ
+  Serial.print("Status code: ");
+  Serial.println(statusCode);
+  Serial.print("Response: ");
+  Serial.println(response);
+#endif
 }
 
 unsigned long NETMANAGER::parseTimeFromPacket() {
