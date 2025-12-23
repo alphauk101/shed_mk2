@@ -82,7 +82,7 @@ bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
 
 
 
-void NETMANAGER::do_metrics_post(SHED_APP* shddata_ptr) {
+void NETMANAGER::do_metrics_post(SHED_APP* shddata_ptr, String trigger) {
   client_task = started;
 
   String ds = (shddata_ptr->door_status.current_state)?"open":"closed";
@@ -100,6 +100,7 @@ void NETMANAGER::do_metrics_post(SHED_APP* shddata_ptr) {
              + "\",\"Fan\":\"" + fan
              + "\",\"Misc\":\"" + misc
              + "\",\"Lights\":\"" + lis
+             + "\",\"trigger\":\"" + trigger
              + "\"}";
   Serial.print(postBody);
 }

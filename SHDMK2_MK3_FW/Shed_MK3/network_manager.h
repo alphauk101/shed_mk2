@@ -14,7 +14,7 @@ public:
   bool isConnected(void);
   void getIP(String &ip_ptr);
   /*Triggers a post operation to the server*/
-  void do_metrics_post(SHED_APP*);
+  void do_metrics_post(SHED_APP* shddata_ptr, String trigger);
 private:
   unsigned long  parseTimeFromPacket(void);
   //void sendNTPpacket(const char *address);

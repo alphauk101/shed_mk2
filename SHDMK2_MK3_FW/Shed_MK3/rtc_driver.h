@@ -1,6 +1,6 @@
 #ifndef __RTC_DRV_H_
 #define __RTC_DRV_H_
-#include <string>
+#include <string.h>
 #include "shdmk3_config.h"
 
 

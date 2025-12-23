@@ -56,13 +56,13 @@ bool onehz_callback(void *) {
   if (g_shed_data.app_timers.network_post_data > NETWORK_POST_METRICS_SECS) {
     PRINTOUT(">>>> Doing data post <<<<");
     g_shed_data.app_timers.network_post_data = 0;
-    g_network_manager.do_metrics_post(&g_shed_data);
+    //g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_INTERRUPT);
+    g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_TIMER);
   } else {
+
     g_shed_data.app_timers.network_post_data++;
   }
 #endif
-
-
 
   return true;
 }
@@ -169,6 +169,8 @@ void setup() {
     //wifi connected
     g_network_manager.getIP(g_shed_data.network_info.ip);
     g_screen_driver.updateStartUpMessage("", "", "", "", "", "Network... OK", "");
+    //Only send power on message if connected
+    g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_POWERON);
   } else {
     g_screen_driver.updateStartUpMessage("", "", "", "", "", "Network... Failed", "");
   }
@@ -289,7 +291,6 @@ static void get_environment_sensors() {
 #endif
   }
 
-
   if (!isnan(et)) {  // check if 'is not a number'
     g_shed_data.environmentals.external_temp = et;
     check_fan_state();
@@ -315,7 +316,12 @@ static void get_environment_sensors() {
 
 void check_fan_state() {
   if (g_shed_data.environmentals.external_temp < FAN_OFF_TEMPERATURE) {
-    g_shed_data.power_states.fan = RELAY_FAN_OFF;
+    if( g_shed_data.power_states.fan == RELAY_FAN_ON)
+    {
+      g_shed_data.power_states.fan = RELAY_FAN_OFF; //make sure it reflects the correct state when sent.
+      //Create a interrupt type event if the fan has just turned off
+      g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_INTERRUPT);
+    }
   }
 
   if (g_shed_data.environmentals.external_temp > FAN_ON_TEMPERATURE) {

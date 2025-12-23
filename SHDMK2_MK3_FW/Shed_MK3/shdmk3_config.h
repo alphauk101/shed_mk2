@@ -11,6 +11,9 @@
 #define SECRET_PASS "ancienthill347"
 /*********************************************************/
 
+#define TRIGGER_TYPE_INTERRUPT    "INTERRUPT"
+#define TRIGGER_TYPE_TIMER        "TIMER"
+#define TRIGGER_TYPE_POWERON      "POWERON"
 
 /**********DEFAULT SCREEN MESSAGES********************/
 #define STARTUP_MESSAGE "Shed mk3.... V0.1"
