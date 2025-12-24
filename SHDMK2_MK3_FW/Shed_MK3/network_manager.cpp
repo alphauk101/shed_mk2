@@ -40,7 +40,7 @@ WiFiUDP Udp;
 
 
 bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
-  int timeout = 10;
+  
 
   postBody.reserve(256);
 
@@ -56,8 +56,13 @@ bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
     Serial.println(fv);
     return false;
   }
+  
+  return this->connect_to_WIFI_network(scrn_ptr);
+}
 
-
+bool NETMANAGER::connect_to_WIFI_network(SCRNDRV* scrn_ptr)
+{
+  int timeout = 10;
   // attempt to connect to WiFi network:
   while ((status != WL_CONNECTED) && (timeout > 0)) {
     // Connect to WPA/WPA2 network:
@@ -79,6 +84,8 @@ bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
     return false;
   }
 }
+
+
 
 
 

@@ -432,7 +432,7 @@ void SCRNDRV::resetScreenVars() {
   g_screen_data.current_network_icon = signal_none;
 }
 
-void SCRNDRV::task(bool sys_sleep, SHED_APP* shd_data) {
+void SCRNDRV::task(SHED_APP* shd_data, bool sys_sleep, bool net_isConnected) {
 
   //the fxn will deal with the repeat calls.
   bool BLstate = (sys_sleep) ? false : true;
@@ -465,7 +465,7 @@ void SCRNDRV::task(bool sys_sleep, SHED_APP* shd_data) {
         this->SCREENLAYOUT_internalHumd(shd_data);
         break;
       case CS_DoorState:
-        this->SCREENLAYOUT_Information(shd_data);
+        this->SCREENLAYOUT_Information(shd_data, net_isConnected);
         break;
       default:
         break;
@@ -655,7 +655,7 @@ void SCRNDRV::SCREENLAYOUT_ExternalTemp(SHED_APP* shd_data) {
 }
 
 
-void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data) {
+void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data, bool net_isConnected) {
   //Door status
   //Last door open time
   //Door opened counter
@@ -695,7 +695,7 @@ void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data) {
 
     /**********************************/
 
-    if (shd_data->network_info.connected) {
+    if (net_isConnected) {
       tft.print("Network: connected ");
       Y_cursor += FONT_HEIGHT;
       tft.setCursor(TEXT_START_X, Y_cursor);

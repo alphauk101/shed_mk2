@@ -37,6 +37,7 @@ static RTCDRV g_rtc_driver;
 static SHED_APP g_shed_data;
 
 UL_TIMER_t fw_led_timer = 0;
+UL_TIMER_t WIFI_check_timer = 0;
 static int RTC_fail_count = 0;
 
 
@@ -56,13 +57,25 @@ bool onehz_callback(void *) {
   if (g_shed_data.app_timers.network_post_data > NETWORK_POST_METRICS_SECS) {
     PRINTOUT(">>>> Doing data post <<<<");
     g_shed_data.app_timers.network_post_data = 0;
-    //g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_INTERRUPT);
-    g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_TIMER);
+
+    if (g_network_manager.isConnected())
+      g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_TIMER);
+
   } else {
 
     g_shed_data.app_timers.network_post_data++;
   }
 #endif
+
+  if (WIFI_check_timer > WIFI_CONNECT_CHECK_SECS) {
+
+    WIFI_check_timer = 0;
+    if (!g_network_manager.isConnected()) {
+      //This will block but this timer event should be a long interval
+      g_network_manager.connect_to_WIFI_network(&g_screen_driver);
+    }
+  } else
+    WIFI_check_timer++;
 
   return true;
 }
@@ -110,7 +123,7 @@ void setup() {
     delay(1);
     if (wait == 0) break;
   }
-  g_shed_data.network_info.connected = false;
+
   //Set the default relay state
   g_shed_data.power_states.blower = DEFAULT_RELAY_STATE;
   g_shed_data.power_states.lights = DEFAULT_RELAY_STATE;
@@ -164,8 +177,8 @@ void setup() {
   //Set the startup network state
   g_screen_driver.setNetworkState(not_connected);
 
-  g_shed_data.network_info.connected = g_network_manager.init(&g_screen_driver);
-  if (g_shed_data.network_info.connected) {
+  g_network_manager.init(&g_screen_driver);
+  if (g_network_manager.isConnected()) {
     //wifi connected
     g_network_manager.getIP(g_shed_data.network_info.ip);
     g_screen_driver.updateStartUpMessage("", "", "", "", "", "Network... OK", "");
@@ -316,11 +329,11 @@ static void get_environment_sensors() {
 
 void check_fan_state() {
   if (g_shed_data.environmentals.external_temp < FAN_OFF_TEMPERATURE) {
-    if( g_shed_data.power_states.fan == RELAY_FAN_ON)
-    {
-      g_shed_data.power_states.fan = RELAY_FAN_OFF; //make sure it reflects the correct state when sent.
+    if (g_shed_data.power_states.fan == RELAY_FAN_ON) {
+      g_shed_data.power_states.fan = RELAY_FAN_OFF;  //make sure it reflects the correct state when sent.
       //Create a interrupt type event if the fan has just turned off
-      g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_INTERRUPT);
+      if (g_network_manager.isConnected())
+          g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_INTERRUPT);
     }
   }
 
@@ -358,19 +371,9 @@ static void check_task_timers() {
   if ((current_time - g_shed_data.app_timers.screen_timer) > SCREEN_UPDATE_TIME) {
     networkState_icon net_icon = convertRSSIToIcon();
     g_screen_driver.setNetworkState(net_icon);
-    g_screen_driver.task(g_shed_data.system_asleep, &g_shed_data);
+
+    g_screen_driver.task( &g_shed_data, g_shed_data.system_asleep, g_network_manager.isConnected());
     g_shed_data.app_timers.screen_timer = current_time;
-  }
-
-
-  if ((current_time - g_shed_data.app_timers.network_timer) > NETWORK_TASK_CHECK) {
-    g_shed_data.network_info.connected = g_network_manager.isConnected();
-    if (g_shed_data.network_info.connected) {
-      //g_network_manager.getTime();
-    } else {
-      //Not connected should retry, but not frequently!
-    }
-    g_shed_data.app_timers.network_timer = current_time;
   }
 
   //Check the RTC task
@@ -463,6 +466,9 @@ void wake_up() {
   g_shed_data.system_asleep = false;
 
   //g_led_driver.show_action_swipe(PXL_RED);
+  //trigger an interrupt message to the server.
+  if (g_network_manager.isConnected())
+        g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_INTERRUPT);
 }
 
 
@@ -477,7 +483,7 @@ void checkDoorState() {
       if (g_shed_data.door_status.current_state)
         g_shed_data.door_status.open_counter++;
 
-        //grab last door closed as last door open is not useful when viewed.... you had to open it to view it!
+      //grab last door closed as last door open is not useful when viewed.... you had to open it to view it!
       if (doorState == DOOR_CLOSED) {
         if (g_rtc_driver.getLatestTime(&tmpDT)) {
           g_shed_data.door_status.last_opened = tmpDT;

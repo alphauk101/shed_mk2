@@ -16,7 +16,7 @@
 #define TRIGGER_TYPE_POWERON      "POWERON"
 
 /**********DEFAULT SCREEN MESSAGES********************/
-#define STARTUP_MESSAGE "Shed mk3.... V0.1"
+#define STARTUP_MESSAGE "Shed mk3.... V0.2"
 #define SCREEN_CHANGE_TIMEOUT 10000  //change between screen
 /*****************************************************/
 
@@ -73,6 +73,8 @@ use the below defines to set the states so it is synchronised with the hardware.
 #define NETWORK_POST_METRICS_SECS     (30 * MINUTE) //If this is zero then the task is not performed
 //#define NETWORK_POST_METRICS_SECS     (10) //If this is zero then the task is not performed
 
+#define WIFI_CONNECT_CHECK_SECS       (60 * MINUTE) //perform a check to connect to wifi if lost.
+
 typedef unsigned long UL_TIMER_t;
 
 typedef struct {
@@ -121,12 +123,8 @@ typedef struct {
 } DOOR_STATUS;
 
 typedef struct {
-  bool connected;
-
   String ip;
-
   long latest_RSSI;
-
 } NETWORK_INFO;
 
 

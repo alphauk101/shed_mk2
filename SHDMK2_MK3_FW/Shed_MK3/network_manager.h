@@ -12,6 +12,11 @@ public:
   long getRSSI(void);
   unsigned long  getTime(void); //return secs from unix epoch
   bool isConnected(void);
+  /*
+  Attempts to connect to the wifi, will block during attempt.
+  Screen pointer allows network graphic to display connection
+  */
+  bool connect_to_WIFI_network(SCRNDRV* scrn_ptr);
   void getIP(String &ip_ptr);
   /*Triggers a post operation to the server*/
   void do_metrics_post(SHED_APP* shddata_ptr, String trigger);
