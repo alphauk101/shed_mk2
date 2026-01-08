@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensor Data Dashboard - Shed Mk3</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #f4f7fe;
+            --card-bg: #ffffff;
+            --text-main: #2b3674;
+            --text-secondary: #a3aed0;
+            --accent-blue: #4318ff;
+            --shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
+            --progress-green: #26d148;
+            --progress-red: #ba1e33;
+            --interrupt-accent: #ba1e33;
+            --power-accent: #05cd99;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 { 
+            font-weight: 700; 
+            font-size: 2rem;
+            margin: 0 0 8px 0;
+            color: var(--text-main);
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .metrics-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            width: 100%;
+            max-width: 1400px;
+            margin-bottom: 30px;
+        }
+
+        /* --- ENHANCED INTERRUPT SECTION --- */
+        .interrupt-row {
+            width: 100%;
+            max-width: 1400px;
+            margin-bottom: 30px;
+        }
+
+        .interrupt-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            padding: 20px 25px;
+            display: flex;
+            flex-direction: column;
+            border-left: 6px solid var(--interrupt-accent);
+            transition: all 0.3s ease;
+        }
+
+        .interrupt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #f0f2f8;
+            padding-bottom: 10px;
+        }
+
+        .interrupt-badge {
+            background: var(--interrupt-accent);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .interrupt-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            width: 100%;
+        }
+
+        .int-stat {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .int-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .int-stat-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        /* --- STANDARD METRIC CARDS --- */
+        .metric-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            padding: 20px;
+            width: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: transform 0.2s ease;
+        }
+
+        .metric-card:hover { transform: translateY(-5px); }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            color: var(--text-main);
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .metric-unit {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .system-metric-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            margin-top: 8px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            transition: width 0.4s ease;
+            background-color: var(--progress-green);
+        }
+        
+        .progress-bar.warning { background-color: #ffc107; }
+        .progress-bar.critical { background-color: var(--progress-red); }
+
+        .net-stats-container {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .net-stat-item {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 4px;
+        }
+
+        .chart-row {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            width: 100%;
+            max-width: 1400px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-container { 
+            flex: 1;
+            min-width: 350px; 
+            max-width: 690px; 
+            padding: 25px; 
+            background-color: var(--card-bg); 
+            border-radius: 20px; 
+            box-shadow: var(--shadow);
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            height: 300px; 
+            width: 100%;
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            color: var(--text-main);
+            margin: 0 0 15px 0;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .metrics-row { gap: 15px; }
+            .metric-card { width: calc(50% - 20px); min-width: 150px; }
+            .interrupt-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Shed Mk3 Dashboard</h1>
+        <div class="subtitle">
+            System Online • Last Update: <span id="timestamp">Loading...</span>
+        </div>
+    </header>
+
+    <div class="metrics-row">
+        <div class="metric-card">
+            <span class="metric-label">Internal Temp</span>
+            <div class="metric-value" id="intemp">--</div>
+        </div>
+        <div class="metric-card">
+            <span class="metric-label">Humidity</span>
+            <div class="metric-value" id="inhum">--</div>
+        </div>
+        <div class="metric-card">
+            <span class="metric-label">Dew Point</span>
+            <div class="metric-value" id="dewpoint">--</div>
+        </div>
+        <div class="metric-card">
+            <span class="metric-label">External Temp</span>
+            <div class="metric-value" id="extTemp">--</div>
+        </div>
+        <div class="metric-card">
+            <span class="metric-label">Hardware Status</span>
+            <div class="net-stats-container">
+                <div class="net-stat-item"><span class="metric-label">Door:</span><span id="doorstate">--</span></div>
+                <div class="net-stat-item"><span class="metric-label">Lights:</span><span id="lights">--</span></div>
+                <div class="net-stat-item"><span class="metric-label">Fan:</span><span id="fan">--</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="interrupt-row">
+        <div class="interrupt-card" id="int-card-container">
+            <div class="interrupt-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="interrupt-badge" id="int-badge">Checking...</span>
+                    <span class="metric-label" style="margin:0; font-weight:700">Latest Trigger Event</span>
+                </div>
+                <div id="int-time" class="subtitle" style="color: var(--accent-blue); font-weight:700">--:--:--</div>
+            </div>
+            
+            <div class="interrupt-grid">
+                <div class="int-stat">
+                    <span class="int-stat-label">Sensors (In / Out)</span>
+                    <span class="int-stat-value"><span id="int-temp-val">--</span>°C / <span id="int-ext-val">--</span>°C</span>
+                </div>
+                <div class="int-stat">
+                    <span class="int-stat-label">Humidity / Dew</span>
+                    <span class="int-stat-value"><span id="int-hum-val">--</span>% / <span id="int-dew-val">--</span>°C</span>
+                </div>
+                <div class="int-stat">
+                    <span class="int-stat-label">Door State</span>
+                    <span class="int-stat-value"><span id="int-door-val">--</span></span>
+                </div>
+                <div class="int-stat">
+                    <span class="int-stat-label">Systems</span>
+                    <span class="int-stat-value">Lights: <span id="int-light-val">--</span> | Fan: <span id="int-fan-val">--</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-row"> 
+        <div class="chart-container">
+            <h2>Temperature History (24hr)</h2>
+            <div class="canvas-wrapper">
+                <canvas id="temperatureChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-container">
+            <h2>Humidity History (24hr)</h2>
+            <div class="canvas-wrapper">
+                <canvas id="humidityChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="metrics-row"> 
+        <div class="metric-card">
+            <span class="metric-label">CPU Load</span>
+            <div class="system-metric-value"><span id="cpuLoad">--</span><span class="metric-unit">%</span></div>
+            <span class="metric-label" style="font-size: 0.7rem;">Temp: <span id="cpuTemp">--</span>°C</span>
+            <div class="progress-bar-container">
+                <div id="cpuProgressBar" class="progress-bar" style="width: 0%;"></div>
+            </div>
+        </div>
+        
+        <div class="metric-card">
+            <span class="metric-label">Memory Usage</span>
+            <div class="system-metric-value"><span id="ramUsed">--</span><span class="metric-unit">GB</span></div>
+            <span class="metric-label" style="font-size: 0.7rem;"><span id="ramPercent">--</span>% of <span id="ramTotal">--</span>GB</span>
+            <div class="progress-bar-container">
+                <div id="ramProgressBar" class="progress-bar" style="width: 0%;"></div>
+            </div>
+        </div>
+        <!--
+        <div class="metric-card">
+            <span class="metric-label">Disk Storage</span>
+            <div class="system-metric-value"><span id="diskUsed">--</span><span class="metric-unit">GB</span></div>
+            <span class="metric-label" style="font-size: 0.7rem;"><span id="diskPercent">--</span>% used</span>
+            <div class="progress-bar-container">
+                <div id="diskProgressBar" class="progress-bar" style="width: 0%;"></div>
+            </div>
+        </div>
+        -->
+        <div class="metric-card">
+            <span class="metric-label">Network (<span id="networkInterface">--</span>)</span>
+            <div class="net-stats-container">
+                <div class="net-stat-item"><span class="metric-label">Down:</span><span id="netRx">--</span></div>
+                <div class="net-stat-item"><span class="metric-label">Up:</span><span id="netTx">--</span></div>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <span class="metric-label">System Uptime</span>
+            <div class="system-metric-value" style="font-size: 1.1rem; margin-top:10px;"><span id="rpiUptime">--</span></div>
+            <span class="metric-label" style="font-size: 0.65rem;">Boot: <span id="rpiBootTime">--</span></span>
+        </div>
+
+        <div class="metric-card" style="width: auto; min-width: 250px;">
+            <span class="metric-label">Storage Drives</span>
+            <div id="disk-container" style="width: 100%;"></div>
+        </div>
+
+    </div>
+
+
+    <script>
+        let tempChart, humidChart;
+
+        // Utility: Format bytes
+        function bytesToSize(bytes) {
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            if (bytes === 0) return '0 B';
+            const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+            return Math.round(bytes / Math.pow(1024, i)) + ' ' + sizes[i];
+        }
+
+        // Utility: Uptime formatting
+        function secondsToDHMS(seconds) {
+            const d = Math.floor(seconds / (3600*24));
+            const h = Math.floor(seconds % (3600*24) / 3600);
+            const m = Math.floor(seconds % 3600 / 60);
+            return (d > 0 ? d + "d " : "") + h + "h " + m + "m";
+        }
+
+        function convertDBTimestampToReadable(DBtimestamp) {
+            return new Date(DBtimestamp).toLocaleString("en-GB", {
+                day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit'
+            }); 
+        }
+
+        // --- FETCH TRIGGER DATA (IMPROVED) ---
+        async function fetchInterruptData() {
+            try {
+                const response = await fetch('/api/trgevt');
+                if (!response.ok) return;
+                const result = await response.json();
+                
+                if (result.data && result.data.length > 0) {
+                    const latest = result.data[0];
+                    
+                    // UI Elements
+                    const badge = document.getElementById('int-badge');
+                    const card = document.getElementById('int-card-container');
+                    
+                    // Style based on trigger type
+                    const isPower = latest.trigger.toLowerCase() === 'poweron';
+                    badge.textContent = latest.trigger;
+                    badge.style.backgroundColor = isPower ? 'var(--power-accent)' : 'var(--interrupt-accent)';
+                    card.style.borderLeftColor = isPower ? 'var(--power-accent)' : 'var(--interrupt-accent)';
+                    
+                    document.getElementById('int-time').textContent = convertDBTimestampToReadable(latest.created_at);
+
+                    // Update Grid Values
+                    document.getElementById('int-temp-val').textContent = latest.inttemp;
+                    document.getElementById('int-ext-val').textContent = latest.exttemp;
+                    document.getElementById('int-hum-val').textContent = latest.inthumidity;
+                    document.getElementById('int-dew-val').textContent = latest.dewpoint;
+                    
+                    // Door State Color
+                    const doorEl = document.getElementById('int-door-val');
+                    doorEl.textContent = latest.doorstate.toUpperCase();
+                    doorEl.style.color = latest.doorstate.toLowerCase() === 'open' ? 'var(--progress-red)' : 'var(--progress-green)';
+
+                    document.getElementById('int-light-val').textContent = latest.lightstate.toUpperCase();
+                    document.getElementById('int-fan-val').textContent = latest.fanstate.toUpperCase();
+                }
+            } catch (error) { console.error('Interrupt Fetch Error:', error); }
+        }
+
+async function fetchSystemData() {
+    try {
+        const response = await fetch('/api/system'); 
+        const data = await response.json();
+        
+        const setProgressStyles = (elementId, percent) => {
+            const bar = document.getElementById(elementId);
+            if (!bar) return;
+            bar.style.width = `${percent}%`;
+            bar.classList.remove('warning', 'critical');
+            if (percent > 85) bar.classList.add('critical');
+            else if (percent > 65) bar.classList.add('warning');
+        };
+        
+        // 1. CPU Section
+        document.getElementById('cpuLoad').textContent = data.cpuLoad;
+        document.getElementById('cpuTemp').textContent = data.cpuTemp;
+        setProgressStyles('cpuProgressBar', parseFloat(data.cpuLoad));
+
+        // 2. Memory (RAM) Section - Using the pre-calculated Pct from backend
+        document.getElementById('ramTotal').textContent = data.memTotal;
+        document.getElementById('ramPercent').textContent = data.memUsedPct;
+        // Calculating Used GB for the display
+        const usedGB = (parseFloat(data.memTotal) * (parseFloat(data.memUsedPct) / 100)).toFixed(2);
+        document.getElementById('ramUsed').textContent = usedGB;
+        setProgressStyles('ramProgressBar', parseFloat(data.memUsedPct));
+
+        // 3. Network Section
+        if (data.netStats) {
+            document.getElementById('networkInterface').textContent = data.netStats.iface || '---';
+            document.getElementById('netRx').textContent = bytesToSize(data.netStats.rx_sec || 0) + '/s';
+            document.getElementById('netTx').textContent = bytesToSize(data.netStats.tx_sec || 0) + '/s';
+        }
+
+        // 4. Uptime Section
+        document.getElementById('rpiUptime').textContent = data.uptime;
+
+        // 5. Multi-Disk Section
+        const diskContainer = document.getElementById('disk-container');
+        if (diskContainer && data.disks) {
+            diskContainer.innerHTML = ''; // Clear old data
+            data.disks.forEach(disk => {
+                const diskHtml = `
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 700; margin-bottom: 4px;">
+                            <span>Drive: ${disk.mount}</span>
+                            <span>${disk.usedGB} / ${disk.totalGB} GB</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar ${disk.usedPercent > 85 ? 'critical' : (disk.usedPercent > 70 ? 'warning' : '')}" 
+                                 style="width: ${disk.usedPercent}%"></div>
+                        </div>
+                    </div>
+                `;
+                diskContainer.insertAdjacentHTML('beforeend', diskHtml);
+            });
+        }
+
+    } catch (e) { 
+        console.error('System Stats Frontend Error:', e); 
+    }
+}
+
+        // --- FETCH SENSOR DATA & CHARTS ---
+        async function fetchSensorData() {
+            try {
+                const response = await fetch('/api/data');
+                const resultObject = await response.json();
+                const metricsArray = resultObject.data;
+                
+                if (!metricsArray || metricsArray.length === 0) return;
+
+                const latest = metricsArray[0];
+                document.getElementById('intemp').innerHTML = latest.inttemp + '<span class="metric-unit">°C</span>';
+                document.getElementById('inhum').innerHTML = latest.inthumidity + '<span class="metric-unit">%</span>';
+                document.getElementById('extTemp').innerHTML = latest.exttemp + '<span class="metric-unit">°C</span>';
+                document.getElementById('dewpoint').innerHTML = latest.dewpoint + '<span class="metric-unit">°C</span>';
+                document.getElementById('timestamp').textContent = convertDBTimestampToReadable(latest.created_at);
+
+                // Update Real-time Status colors
+                const updateState = (id, state, alertVal, alertColor) => {
+                    const el = document.getElementById(id);
+                    el.textContent = state.toUpperCase();
+                    el.style.color = (state.toLowerCase() === alertVal) ? alertColor : 'var(--progress-green)';
+                    el.style.fontWeight = '700';
+                };
+                updateState('doorstate', latest.doorstate, 'open', 'var(--progress-red)');
+                updateState('lights', latest.lightstate, 'on', '#ffb547');
+                updateState('fan', latest.fanstate, 'on', 'var(--accent-blue)');
+
+                // Update Charts
+                const reversed = [...metricsArray].reverse();
+                const labels = reversed.map(m => m.created_at);
+                
+                tempChart.data.labels = labels;
+                tempChart.data.datasets[0].data = reversed.map(m => m.inttemp);
+                tempChart.data.datasets[1].data = reversed.map(m => m.exttemp);
+                tempChart.data.datasets[2].data = reversed.map(m => m.dewpoint);
+                tempChart.update('none'); // Update without animation for performance
+
+                humidChart.data.labels = labels;
+                humidChart.data.datasets[0].data = reversed.map(m => m.inthumidity);
+                humidChart.update('none');
+
+            } catch (e) { console.error('Sensor Fetch Error:', e); }
+        }
+
+        function initCharts() {
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } } } 
+                },
+                scales: {
+                    x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' } }, grid: { display: false } },
+                    y: { grid: { borderDash: [3, 3], color: '#e0e0e0' } }
+                }
+            };
+
+            tempChart = new Chart(document.getElementById('temperatureChart'), {
+                type: 'line',
+                data: {
+                    datasets: [
+                        { label: 'Internal', borderColor: '#4318ff', tension: 0.4, pointRadius: 0, borderWidth: 3 },
+                        { label: 'External', borderColor: '#6ad2ff', tension: 0.4, pointRadius: 0, borderWidth: 2 },
+                        { label: 'Dew Point', borderColor: '#ffb547', borderDash: [5,5], tension: 0.4, pointRadius: 0 }
+                    ]
+                },
+                options: commonOptions
+            });
+
+            humidChart = new Chart(document.getElementById('humidityChart'), {
+                type: 'line',
+                data: {
+                    datasets: [{ 
+                        label: 'Humidity', 
+                        borderColor: '#4318ff', 
+                        backgroundColor: 'rgba(67, 24, 255, 0.05)', 
+                        fill: true, 
+                        tension: 0.4, 
+                        pointRadius: 0, 
+                        borderWidth: 3 
+                    }]
+                },
+                options: commonOptions
+            });
+
+            // Initial Load
+            fetchSensorData();
+            fetchSystemData();
+            fetchInterruptData();
+            
+            // Loops
+            setInterval(fetchSensorData, 5000);
+            setInterval(fetchSystemData, 10000);
+            setInterval(fetchInterruptData, 5000);
+        }
+
+        window.onload = initCharts;
+    </script>
+</body>
+</html>

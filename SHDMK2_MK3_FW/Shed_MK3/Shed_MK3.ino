@@ -17,6 +17,8 @@
 #define MCR_SET_RELAY_STATES g_IOEXP_driver.set_relay_pins(g_shed_data.power_states.blower, g_shed_data.power_states.lights, g_shed_data.power_states.misc, g_shed_data.power_states.fan);
 
 #define PRINTOUT(X) Serial.println(X)
+//Use this to disable serial printout
+//#define PRINTOUT(X) ;
 
 uint8_t button_debounce = 0;
 #define DOOR_STS_DEBOUNCE_COUNT 50
@@ -42,7 +44,8 @@ static int RTC_fail_count = 0;
 
 
 /***
-  1hz timer callback useful for dec/inc in app timers
+  1hz timer callback useful for dec/inc app timers
+  This is an SW interrupt caused by the timer module.
 ***/
 bool onehz_callback(void *) {
 
@@ -60,23 +63,20 @@ bool onehz_callback(void *) {
 
     if (g_network_manager.isConnected())
       g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_TIMER);
-
   } else {
-
     g_shed_data.app_timers.network_post_data++;
   }
 #endif
-
   if (WIFI_check_timer > WIFI_CONNECT_CHECK_SECS) {
-
     WIFI_check_timer = 0;
     if (!g_network_manager.isConnected()) {
-      //This will block but this timer event should be a long interval
+      PRINTOUT("Network disconnected, retrying...");
+      //This will block but this should be called when the network is not connected and at once a minute.
       g_network_manager.connect_to_WIFI_network(&g_screen_driver);
     }
-  } else
+  }else{
     WIFI_check_timer++;
-
+  }
   return true;
 }
 
@@ -94,7 +94,6 @@ static void RTC_callback_event(int evt) {
 
 /*Callback from IOExp when button is pressed.*/
 static void bttn_callback(int button, bool state) {
-
   switch (button) {
     case BUTTON_A:
       //Changes screen when pressed
@@ -104,7 +103,6 @@ static void bttn_callback(int button, bool state) {
     case BUTTON_B:
       PRINTOUT("BUTTON B");
       //Add time to fan timer
-
       if (state) g_shed_data.app_timers.dryer_timer += DRYER_TIME_MINUTES_SECS;
       Serial.println(g_shed_data.app_timers.dryer_timer, DEC);
       break;

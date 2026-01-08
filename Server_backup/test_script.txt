@@ -1,0 +1,5 @@
+$uri = "http://192.168.5.193:3000/api/shdep"
+$body = '{"Itemp":"17.69","Ihumid":"70.32","DewPoint":"12.22","Etemp":"17.81","DoorState":"open","Blower":"off","Fan":"on","Misc":"off","Lights":"on"}'
+$headers = @{"Content-Type" = "application/json"}
+
+Invoke-WebRequest -Uri $uri -Method POST -Headers $headers -Body $body

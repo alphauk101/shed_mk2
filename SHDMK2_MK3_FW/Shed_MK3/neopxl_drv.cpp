@@ -1,7 +1,18 @@
 #include "api/Common.h"
-
 #include "neopxl_drv.h"
 #include <Adafruit_NeoPixel.h>
+
+
+#ifdef LED_TIMER_FRAMING
+#include <Adafruit_ZeroTimer.h>
+
+//float freq = 1000.0;  // 1 KHz
+float freq = 50;
+
+// timer tester
+Adafruit_ZeroTimer zerotimer = Adafruit_ZeroTimer(3);
+#endif
+
 
 #define MCR_SLEEP_GUARD(X) \
   if (g_led_data.g_sys_asleep) return X
@@ -106,8 +117,81 @@ constexpr uint8_t boxwipe_side_index[][2]{
 
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
+#ifdef LED_TIMER_FRAMING
+// the timer callback
+volatile bool togglepin = false;
+
+void TC3_Handler() {
+  Adafruit_ZeroTimer::timerHandler(3);
+}
+
+
+void TimerCallback0(void) {
+}
+
+void setupHWTimer(void) {
+  // Set up the flexible divider/compare
+  uint16_t divider = 1;
+  uint16_t compare = 0;
+  tc_clock_prescaler prescaler = TC_CLOCK_PRESCALER_DIV1;
+
+  if ((freq < 24000000) && (freq > 800)) {
+    divider = 1;
+    prescaler = TC_CLOCK_PRESCALER_DIV1;
+    compare = 48000000 / freq;
+  } else if (freq > 400) {
+    divider = 2;
+    prescaler = TC_CLOCK_PRESCALER_DIV2;
+    compare = (48000000 / 2) / freq;
+  } else if (freq > 200) {
+    divider = 4;
+    prescaler = TC_CLOCK_PRESCALER_DIV4;
+    compare = (48000000 / 4) / freq;
+  } else if (freq > 100) {
+    divider = 8;
+    prescaler = TC_CLOCK_PRESCALER_DIV8;
+    compare = (48000000 / 8) / freq;
+  } else if (freq > 50) {
+    divider = 16;
+    prescaler = TC_CLOCK_PRESCALER_DIV16;
+    compare = (48000000 / 16) / freq;
+  } else if (freq > 12) {
+    divider = 64;
+    prescaler = TC_CLOCK_PRESCALER_DIV64;
+    compare = (48000000 / 64) / freq;
+  } else if (freq > 3) {
+    divider = 256;
+    prescaler = TC_CLOCK_PRESCALER_DIV256;
+    compare = (48000000 / 256) / freq;
+  } else if (freq >= 0.75) {
+    divider = 1024;
+    prescaler = TC_CLOCK_PRESCALER_DIV1024;
+    compare = (48000000 / 1024) / freq;
+  } else {
+    //Serial.println("Invalid frequency");
+    //while (1) delay(10);
+  }
+
+  zerotimer.enable(false);
+  zerotimer.configure(prescaler,                    // prescaler
+                      TC_COUNTER_SIZE_16BIT,        // bit width of timer/counter
+                      TC_WAVE_GENERATION_MATCH_PWM  // frequency or PWM mode
+  );
+
+  zerotimer.setCompare(0, compare);
+  zerotimer.setCallback(true, TC_CALLBACK_CC_CHANNEL0, TimerCallback0);
+  zerotimer.enable(true);
+}
+
+#endif
+
 
 void SHDPIXEL::init() {
+  //Used hardware timer to update LED patterns
+#ifdef LED_TIMER_FRAMING
+  setupHWTimer();
+#endif
+
   strip.begin();  // INITIALIZE NeoPixel strip object (REQUIRED)  // Turn OFF all pixels ASAP
   strip.setBrightness(DEFAULT_BRIGHTNESS);
   MCR_CLEAR_STRIP;
@@ -115,6 +199,11 @@ void SHDPIXEL::init() {
   //this->set_box_left(strip.Color(255, 255, 255));
   // this->set_box_topbottm(true, true, strip.Color(255, 255, 255));
   //this->set_all(strip.Color(255, 255, 255));
+#define NEW_STARTUP
+#ifdef NEW_STARTUP
+  this->side_wipe(10, strip.Color(255, 0, 0));
+
+#else
   int a = 1;
   while (a-- > 0) {
     this->box_wipe(true, 50, strip.Color(255, 0, 0));
@@ -127,7 +216,7 @@ void SHDPIXEL::init() {
     this->box_wipe(false, 50, strip.Color(0, 0, 255));
     delay(100);
   }
-
+#endif
   g_led_data.g_sys_asleep = false;
   g_led_data.last_temperature = 0;
 }
@@ -149,8 +238,7 @@ uint32_t SHDPIXEL::convert_color_to_32bit(int col) {
 }
 
 
-void SHDPIXEL::show_action_swipe(int color) 
-{
+void SHDPIXEL::show_action_swipe(int color) {
   uint32_t colour = this->convert_color_to_32bit(color);
 
   this->box_wipe(true, 50, colour);
@@ -204,6 +292,33 @@ void SHDPIXEL::task(bool asleep) {
     }
   }
 }
+
+void SHDPIXEL::side_wipe(uint16_t speed, uint32_t color) {
+  MCR_SLEEP_GUARD();
+  MCR_CLEAR_STRIP;
+
+  strip.setBrightness(0);
+  this->set_box_right(color);
+
+  this->do_brightness_swipe(true, speed);
+  this->do_brightness_swipe(false, speed);
+}
+
+void SHDPIXEL::do_brightness_swipe(bool swipeUP, int speed) {
+  // Determine direction: 1 for up, -1 for down
+  int8_t step = swipeUP ? 1 : -1;
+  int16_t target = swipeUP ? 255 : 0;
+  int16_t brightness = swipeUP ? 0 : 255;
+
+  // Continue until we reach or pass the target
+  while (brightness != target) {
+    brightness += step;
+    strip.setBrightness(brightness);
+    strip.show();  // Ensure the hardware actually updates
+    delay(speed);
+  }
+}
+
 
 /*
 This function should allow a wipe from top to bottom or, vice versa (depending on dir bool)
@@ -262,7 +377,6 @@ void SHDPIXEL::set_box_right(uint32_t color) {
   for (int a = 0; a < sizeof(boxright); a++) {
     strip.setPixelColor(boxright[a], color);
   }
-
   strip.show();
 }
 
