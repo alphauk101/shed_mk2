@@ -41,6 +41,7 @@ bool RTCDRV::getLatestTime(DateTime *ts_ptr)
 
 
 bool RTCDRV::task(SHED_APP *shd_ptr) {
+  this->showtime();
   if (rtc.isrunning()) {
     DateTime now = rtc.now();
     g_rtc_data.last_timestamp = now;

@@ -7,7 +7,7 @@
 #define TFT_CS_PIN 7
 #define RESET_PIN 3
 #define BACKLIGHT_PIN 1
-
+#define TOUCHSELECT_PIN A6
 #define DEFAULT_ORIENTATION 3
 
 

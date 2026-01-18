@@ -4,8 +4,8 @@
 #include <WiFiUdp.h>
 #include <ArduinoHttpClient.h>
 
-#define ENABLE_NTP  //debugging only, prevents repeative calls to NTP
-
+//#define ENABLE_NTP  //debugging only, prevents repeative calls to NTP
+//#define ENABLE_METRIC_POST
 
 char ssid[] = SECRET_SSID;    // your network SSID (name)
 char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
@@ -90,6 +90,12 @@ bool NETMANAGER::connect_to_WIFI_network(SCRNDRV* scrn_ptr)
 
 
 void NETMANAGER::do_metrics_post(SHED_APP* shddata_ptr, String trigger) {
+
+#ifndef ENABLE_METRIC_POST
+  return; //shortcut out if not enabled.
+#endif
+
+
   client_task = started;
 
   String ds = (shddata_ptr->door_status.current_state)?"open":"closed";

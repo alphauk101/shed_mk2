@@ -2,7 +2,12 @@
 #define __SHDMKR_CFG__
 #include "RTClib.h"
 
-#define DEBUG_ENVIRONMENTS 0
+
+#define PROTO_HARDWARE //Define if using proto hardware only
+
+
+#define DEBUG_OUT
+#define DEBUG_ENVIRONMENTS 1
 
 #define DOOR_STATUS_PIN A5
 

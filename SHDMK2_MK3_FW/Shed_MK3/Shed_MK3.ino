@@ -10,15 +10,24 @@
 #include <arduino-timer.h>
 
 
+
 #include "shdmk3_config.h"
 
 #define DEFAULT_RELAY_STATE false
 
 #define MCR_SET_RELAY_STATES g_IOEXP_driver.set_relay_pins(g_shed_data.power_states.blower, g_shed_data.power_states.lights, g_shed_data.power_states.misc, g_shed_data.power_states.fan);
 
+
+#ifdef DEBUG_OUT
 #define PRINTOUT(X) Serial.println(X)
+<<<<<<< Updated upstream
 //Use this to disable serial printout
 //#define PRINTOUT(X) ;
+=======
+#else
+#define PRINTOUT(X) ;
+#endif
+>>>>>>> Stashed changes
 
 uint8_t button_debounce = 0;
 #define DOOR_STS_DEBOUNCE_COUNT 50
@@ -91,7 +100,6 @@ static void RTC_callback_event(int evt) {
   }
 }
 
-
 /*Callback from IOExp when button is pressed.*/
 static void bttn_callback(int button, bool state) {
   switch (button) {
@@ -122,6 +130,28 @@ void setup() {
     if (wait == 0) break;
   }
 
+<<<<<<< Updated upstream
+=======
+
+//#define GRAB_UUID
+#ifdef GRAB_UUID
+  // Read the 128-bit unique ID
+  volatile uint32_t val[4];
+  val[0] = *(volatile uint32_t *)0x008061FC;
+  val[1] = *(volatile uint32_t *)0x00806010;
+  val[2] = *(volatile uint32_t *)0x00806014;
+  val[3] = *(volatile uint32_t *)0x00806018;
+
+  // Print the ID
+  Serial.print("MCU UUID: ");
+  for (int i = 0; i < 4; i++) {
+    Serial.print(val[i], HEX);
+  }
+  Serial.println();
+#endif
+
+  g_shed_data.network_info.connected = false;
+>>>>>>> Stashed changes
   //Set the default relay state
   g_shed_data.power_states.blower = DEFAULT_RELAY_STATE;
   g_shed_data.power_states.lights = DEFAULT_RELAY_STATE;
@@ -141,11 +171,15 @@ void setup() {
   g_screen_driver.setStartUpMessage();
   g_screen_driver.updateStartUpMessage("IO Expander...", "Internal Temp...", "Internal Humidity...", "External Temp...", "LED Driver...", "Network...", "RTC...");
 
+  PRINTOUT("Screen ok...");
+
   //setup ios
   if (g_IOEXP_driver.poweron_setup(bttn_callback)) {
     g_screen_driver.updateStartUpMessage("IO Expander... OK", "", "", "", "", "", "");
+    PRINTOUT("IO Exp, OK.");
   } else {
     g_screen_driver.updateStartUpMessage("IO Expander... ERROR!", "", "", "", "", "", "");
+    PRINTOUT("IO Exp, ERROR.");
   }
   //Setup i2c temp hum sensor
   if (g_intTempHum.init()) {
@@ -153,16 +187,21 @@ void setup() {
     g_screen_driver.updateStartUpMessage("", "Internal Temp... OK", "", "", "", "", "");
     g_shed_data.environmentals.internal_humidity_max = g_shed_data.environmentals.internal_humidity_min = g_shed_data.environmentals.internal_humidity = g_intTempHum.get_humidity();
     g_shed_data.environmentals.internal_temp_max = g_shed_data.environmentals.internal_temp_min = g_shed_data.environmentals.internal_temp = g_intTempHum.get_temperature();
+
+    PRINTOUT("Internal Temp/Hum, OK.");
   } else {
     g_screen_driver.updateStartUpMessage("", "", "Internal Humidity... ERROR", "", "", "", "");
     g_screen_driver.updateStartUpMessage("", "Internal Temp... ERROR", "", "", "", "", "");
+    PRINTOUT("Internal Temp/Hum, ERROR.");
   }
 
   if (g_extTemp.init()) {
     g_screen_driver.updateStartUpMessage("", "", "", "External Temp... OK", "", "", "");
     g_shed_data.environmentals.external_temp = g_shed_data.environmentals.external_temp_max = g_shed_data.environmentals.external_temp_min = g_extTemp.getTemp();
+    PRINTOUT("External Temp, OK.");
   } else {
     g_screen_driver.updateStartUpMessage("", "", "", "External Temp... ERROR", "", "", "");
+    PRINTOUT("External Temp, ERROR.");
   }
 
 #ifndef NO_DELAY_STARTUP

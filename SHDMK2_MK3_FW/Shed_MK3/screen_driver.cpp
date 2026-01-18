@@ -76,6 +76,9 @@ void SCRNDRV::init() {
   //setup reset and backlight pins.
   pinMode(BACKLIGHT_PIN, OUTPUT);
 
+  pinMode(TOUCHSELECT_PIN,OUTPUT);
+  digitalWrite(TOUCHSELECT_PIN,HIGH);//deselect touchpin select, if connected.
+
 
   digitalWrite(BACKLIGHT_PIN, BACKLIGHT_ON);
   digitalWrite(RESET_PIN, HIGH);
