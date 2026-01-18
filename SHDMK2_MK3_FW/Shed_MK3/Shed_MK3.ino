@@ -20,14 +20,14 @@
 
 #ifdef DEBUG_OUT
 #define PRINTOUT(X) Serial.println(X)
-<<<<<<< Updated upstream
+
 //Use this to disable serial printout
 //#define PRINTOUT(X) ;
-=======
+
 #else
 #define PRINTOUT(X) ;
 #endif
->>>>>>> Stashed changes
+
 
 uint8_t button_debounce = 0;
 #define DOOR_STS_DEBOUNCE_COUNT 50
@@ -130,8 +130,7 @@ void setup() {
     if (wait == 0) break;
   }
 
-<<<<<<< Updated upstream
-=======
+
 
 //#define GRAB_UUID
 #ifdef GRAB_UUID
@@ -151,7 +150,7 @@ void setup() {
 #endif
 
   g_shed_data.network_info.connected = false;
->>>>>>> Stashed changes
+
   //Set the default relay state
   g_shed_data.power_states.blower = DEFAULT_RELAY_STATE;
   g_shed_data.power_states.lights = DEFAULT_RELAY_STATE;

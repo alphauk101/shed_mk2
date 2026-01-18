@@ -130,6 +130,7 @@ typedef struct {
 typedef struct {
   String ip;
   long latest_RSSI;
+  bool connected;
 } NETWORK_INFO;
 
 
