@@ -89,7 +89,6 @@ bool onehz_callback(void *) {
   return true;
 }
 
-
 static void RTC_callback_event(int evt) {
   switch (evt) {
     case RTC_EVENT_RESET_NTP_ATTEMPTS:
@@ -446,6 +445,9 @@ static void check_task_timers() {
   //safe to call rapidly
   g_network_manager.task();
   g_IOEXP_driver.task();
+
+  //checks whether the lights can be turned off to save power
+  check_light_state();  
 }
 
 
@@ -500,6 +502,7 @@ void wake_up() {
 
   //wake the system
   g_shed_data.system_asleep = false;
+  g_shed_data.app_timers.lightsaver_timer = 0;
 
   //g_led_driver.show_action_swipe(PXL_RED);
   //trigger an interrupt message to the server.
@@ -532,6 +535,29 @@ void checkDoorState() {
   }
 }
 
+viod check_light_state()
+{
+
+  if(! g_shed_data.system_asleep)
+  {
+    //This only applies when the system is awake.
+
+    //1. check the PIR state
+    if(g_IOEXP_driver.get_pir_state())
+    {
+      //The PIR has seen someone, make the sure the lights are on and the timer is started
+      g_shed_data.power_states.lights = true;
+      MCR_SET_RELAY_STATES;
+
+      g_shed_data.app_timers.lightsaver_timer = 0;
+    }
+
+  }//system is asleep do nothing
+
+
+}
+
+
 
 void check_blower_relay_timer() {
   //If this is greater than zero then dryer is on!
@@ -559,6 +585,7 @@ void loop() {
       g_shed_data.system_asleep = true;
       g_shed_data.sleep_countdown_act = false;
       g_shed_data.show_asleep_LEDS = SHOW_SLEEP_BLINKS;
+
     }
   }
   //Set the lights, its ok to call the fxn repeatedly

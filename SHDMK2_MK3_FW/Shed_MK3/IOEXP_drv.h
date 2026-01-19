@@ -1,15 +1,20 @@
 #ifndef __IOEXP_h_
 #define __IOEXP_h_
 
-#define RELAY_1_BP 0
-#define RELAY_2_BP 1
-#define RELAY_3_BP 2
-#define RELAY_4_BP 3
+#define RELAY_1_BP    0
+#define RELAY_2_BP    1
+#define RELAY_3_BP    2
+#define RELAY_4_BP    3
+
+
+#define PIR_PIN_BP    7
+#define PIR_PERSON_SEEN       true //set the boolean state for person seen
+
 
 #define FAN_RELAY_BP RELAY_4_BP
 #define BLOWER_RELAY_BP RELAY_3_BP
 #define MISC_RELAY_BP RELAY_2_BP
-#define LIGHT_RELAY_BP RELAY_1_BP
+#define LIGHT_RELAY_BP RELAY_1_BP     //Spare exp pin 1
 
 
 #define SWT_1_BP 0
@@ -29,11 +34,13 @@ public:
   void set_firmwareLED_pin(bool);
   void toggle_firmwareLED_pin(void);
   void set_statusLED_pin(bool);
+  bool get_pir_state(void);
 private:
   void (*btn_evt_callback)(int, bool);
   uint8_t PORTA_PIN_STATE = 0;
   uint8_t PORTB_PIN_STATE = 0;
   bool BTN_A_PRESSED = false;
   bool BTN_B_PRESSED = false;
+  bool PIR_STATE = false;
 };
 #endif

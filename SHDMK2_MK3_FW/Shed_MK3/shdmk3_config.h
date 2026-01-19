@@ -65,15 +65,17 @@ use the below defines to set the states so it is synchronised with the hardware.
       APPLICATION TIME VALUES
 */
 
-#define ENVIRONMENT_SAMPLE_TIME     5000
-#define LED_DEFAULT_TIME            5000
-#define SCREEN_UPDATE_TIME          250
-#define NETWORK_TASK_CHECK          10000
-#define RTC_TIMER_TASK              30000
-#define COUNTDOWN_TIME_SECONDS      180
+#define ENVIRONMENT_SAMPLE_TIME       5000
+#define LED_DEFAULT_TIME              5000
+#define SCREEN_UPDATE_TIME            250
+#define NETWORK_TASK_CHECK            10000
+#define RTC_TIMER_TASK                30000
+#define COUNTDOWN_TIME_SECONDS        180
 //dryer time increments minutes (but for app in secs)
-#define MINUTE                      60
-#define DRYER_TIME_MINUTES_SECS      (10 * MINUTE)
+#define MINUTE                        60
+#define DRYER_TIME_MINUTES_SECS       (10 * MINUTE)
+
+#define LIGHTS_TIME_SECONDS           (2 * MINUTE)
 
 #define NETWORK_POST_METRICS_SECS     (30 * MINUTE) //If this is zero then the task is not performed
 //#define NETWORK_POST_METRICS_SECS     (10) //If this is zero then the task is not performed
@@ -91,6 +93,7 @@ typedef struct {
   UL_TIMER_t sys_sleep_timer;
   UL_TIMER_t dryer_timer = 0;
   UL_TIMER_t network_post_data = 0;
+  UL_TIMER_t lightsaver_timer = 0;
 } APP_TIMERS;
 
 

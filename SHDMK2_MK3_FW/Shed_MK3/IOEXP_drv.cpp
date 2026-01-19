@@ -15,6 +15,23 @@ IOEXP_DRV::IOEXP_DRV() {
   this->BTN_A_PRESSED = false;
 }
 
+/*
+Returns a bool reflecting the PIR sensor status 
+true = person detected
+false = no person detected
+
+This logic may have to be reversed based on the PIR logic output.
+*/
+bool IOEXP_DRV::get_pir_state(void)
+{
+  if(this->PIR_STATE == PIR_PERSON_SEEN)
+  {
+    return true;
+  }else{
+    return false;
+  }
+}
+
 
 void IOEXP_DRV::get_pressed_buttons(bool *btnA, bool *btnB) {
 
@@ -27,14 +44,17 @@ void IOEXP_DRV::get_pressed_buttons(bool *btnA, bool *btnB) {
 
 bool IOEXP_DRV::task() {
   bool BA, BB;
+  uint8_t portB = mcp.readPort(MCP23017Port::B);
+  uint8_t portA = mcp.readPort(MCP23017Port::A);
 
-  uint8_t port = mcp.readPort(MCP23017Port::B);
-  if ((port & (1 << SWT_1_BP)) == 0) {
+  this->PIR_STATE = ((portA & (1 << PIR_PIN_BP)) == 0) ? true : false;
+
+  if ((portB & (1 << SWT_1_BP)) == 0) {
     BA = true;
   } else {
     BA = false;
   }
-  if ((port & (1 << SWT_2_BP)) == 0) {
+  if ((portB & (1 << SWT_2_BP)) == 0) {
     BB = true;
   } else {
     BB = false;
