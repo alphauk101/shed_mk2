@@ -58,6 +58,9 @@ static int RTC_fail_count = 0;
 ***/
 bool onehz_callback(void *) {
 
+  //General one second counter
+  g_shed_data.app_timers.system_uptime_1hz++;
+
   //Tick the timers if necessary
   if (g_shed_data.app_timers.sys_sleep_timer > 0)
     g_shed_data.app_timers.sys_sleep_timer--;
@@ -83,7 +86,7 @@ bool onehz_callback(void *) {
       //This will block but this should be called when the network is not connected and at once a minute.
       g_network_manager.connect_to_WIFI_network(&g_screen_driver);
     }
-  }else{
+  } else {
     WIFI_check_timer++;
   }
   return true;
@@ -245,9 +248,9 @@ void setup() {
     delay(500);
 
     g_shed_data.power_states.misc = RELAY_ON;
-    g_shed_data.power_states.blower = RELAY_OFF;
-    g_shed_data.power_states.fan = RELAY_OFF;
-    g_shed_data.power_states.lights = RELAY_OFF;
+    g_shed_data.power_states.blower = RELAY_ON;
+    g_shed_data.power_states.fan = RELAY_ON;
+    g_shed_data.power_states.lights = RELAY_ON;
     MCR_SET_RELAY_STATES;
 
     delay(500);
@@ -368,7 +371,7 @@ void check_fan_state() {
       g_shed_data.power_states.fan = RELAY_FAN_OFF;  //make sure it reflects the correct state when sent.
       //Create a interrupt type event if the fan has just turned off
       if (g_network_manager.isConnected())
-          g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_INTERRUPT);
+        g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_INTERRUPT);
     }
   }
 
@@ -407,7 +410,7 @@ static void check_task_timers() {
     networkState_icon net_icon = convertRSSIToIcon();
     g_screen_driver.setNetworkState(net_icon);
 
-    g_screen_driver.task( &g_shed_data, g_shed_data.system_asleep, g_network_manager.isConnected());
+    g_screen_driver.task(&g_shed_data, g_shed_data.system_asleep, g_network_manager.isConnected());
     g_shed_data.app_timers.screen_timer = current_time;
   }
 
@@ -447,7 +450,7 @@ static void check_task_timers() {
   g_IOEXP_driver.task();
 
   //checks whether the lights can be turned off to save power
-  check_light_state();  
+  check_light_state();
 }
 
 
@@ -507,7 +510,7 @@ void wake_up() {
   //g_led_driver.show_action_swipe(PXL_RED);
   //trigger an interrupt message to the server.
   if (g_network_manager.isConnected())
-        g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_INTERRUPT);
+    g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_INTERRUPT);
 }
 
 
@@ -535,16 +538,23 @@ void checkDoorState() {
   }
 }
 
-viod check_light_state()
-{
+void check_light_state() {
+  static UL_TIMER_t time;
+  bool pir = g_IOEXP_driver.get_pir_state();
+  if (g_shed_data.app_timers.system_uptime_1hz != time) {
+    g_shed_data.app_timers.system_uptime_1hz = time;
+    if (pir) {
+      PRINTOUT("SEEN");
+    } else {
+      PRINTOUT("GONE");
+    }
+  }
 
-  if(! g_shed_data.system_asleep)
-  {
+  if (!g_shed_data.system_asleep) {
     //This only applies when the system is awake.
 
     //1. check the PIR state
-    if(g_IOEXP_driver.get_pir_state())
-    {
+    if (pir) {
       //The PIR has seen someone, make the sure the lights are on and the timer is started
       g_shed_data.power_states.lights = true;
       MCR_SET_RELAY_STATES;
@@ -552,9 +562,7 @@ viod check_light_state()
       g_shed_data.app_timers.lightsaver_timer = 0;
     }
 
-  }//system is asleep do nothing
-
-
+  }  //system is asleep do nothing
 }
 
 
@@ -585,7 +593,6 @@ void loop() {
       g_shed_data.system_asleep = true;
       g_shed_data.sleep_countdown_act = false;
       g_shed_data.show_asleep_LEDS = SHOW_SLEEP_BLINKS;
-
     }
   }
   //Set the lights, its ok to call the fxn repeatedly

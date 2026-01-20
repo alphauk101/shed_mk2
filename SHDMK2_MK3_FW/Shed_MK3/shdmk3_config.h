@@ -90,6 +90,7 @@ typedef struct {
   UL_TIMER_t screen_timer = SCREEN_UPDATE_TIME;
   UL_TIMER_t network_timer = NETWORK_TASK_CHECK;
   UL_TIMER_t rtc_timer = RTC_TIMER_TASK;
+  UL_TIMER_t system_uptime_1hz = 0;
   UL_TIMER_t sys_sleep_timer;
   UL_TIMER_t dryer_timer = 0;
   UL_TIMER_t network_post_data = 0;

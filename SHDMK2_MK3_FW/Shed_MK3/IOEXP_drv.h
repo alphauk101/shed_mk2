@@ -7,7 +7,7 @@
 #define RELAY_4_BP    3
 
 
-#define PIR_PIN_BP    7
+#define PIR_PIN_BP    4
 #define PIR_PERSON_SEEN       true //set the boolean state for person seen
 
 

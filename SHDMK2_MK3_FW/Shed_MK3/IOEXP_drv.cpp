@@ -40,6 +40,8 @@ void IOEXP_DRV::get_pressed_buttons(bool *btnA, bool *btnB) {
 
   this->BTN_B_PRESSED = false;
   this->BTN_A_PRESSED = false;
+
+  //mcp.pinMode(7, INPUT);//PIR input
 }
 
 bool IOEXP_DRV::task() {
@@ -47,7 +49,7 @@ bool IOEXP_DRV::task() {
   uint8_t portB = mcp.readPort(MCP23017Port::B);
   uint8_t portA = mcp.readPort(MCP23017Port::A);
 
-  this->PIR_STATE = ((portA & (1 << PIR_PIN_BP)) == 0) ? true : false;
+  this->PIR_STATE = ((portA & (1 << PIR_PIN_BP)) > 0) ? true : false;
 
   if ((portB & (1 << SWT_1_BP)) == 0) {
     BA = true;
@@ -76,8 +78,14 @@ bool IOEXP_DRV::task() {
 
 bool IOEXP_DRV::poweron_setup(void (*callback)(int, bool)) {
   // 0 = output
-  mcp.portMode(MCP23017Port::A, 0);
-  mcp.portMode(MCP23017Port::B, 0x03);
+  #define IO_OUTPUT 0
+  #define IO_INPUT 1
+
+  uint8_t portA_BM = (IO_OUTPUT << RELAY_1_BP) | (IO_OUTPUT << RELAY_2_BP) | (IO_OUTPUT << RELAY_3_BP) | (IO_OUTPUT << RELAY_4_BP) | (IO_INPUT << PIR_PIN_BP);
+  mcp.portMode(MCP23017Port::A, portA_BM);
+
+  uint8_t portB_BM = (IO_INPUT << SWT_1_BP) | (IO_INPUT << SWT_2_BP) | (IO_OUTPUT << LED_1_BP) | (IO_OUTPUT << LED_2_BP);
+  mcp.portMode(MCP23017Port::B, portB_BM);
 
   this->btn_evt_callback = callback;
   //Set all the relays to off
