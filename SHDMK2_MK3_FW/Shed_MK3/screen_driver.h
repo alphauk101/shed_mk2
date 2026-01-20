@@ -28,7 +28,7 @@ typedef enum {
 class SCRNDRV {
 public:
   void init(void);
-  void task(SHED_APP*, bool sys_sleep, bool net_isConnected);  //Allows exposure to the environment data
+  void task(SHED_APP* shd_data, bool sys_sleep, bool net_isConnected, bool PIR_state);  //Allows exposure to the environment data
   //Sets the default startup screen, waits for updates from below fxn.
   void setStartUpMessage(void);
   //Updates the screen with the relevant status from the main
@@ -49,6 +49,7 @@ private:
   void setNetworkIcon(void);
   void fadeBackLight(bool);
   void changeSreen(void);
+  void setPIRIcon(bool state);
   //Sets the given screen content layout
   void SCREENLAYOUT_internalTemp(SHED_APP*);
   void SCREENLAYOUT_internalHumd(SHED_APP*);

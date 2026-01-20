@@ -410,7 +410,7 @@ static void check_task_timers() {
     networkState_icon net_icon = convertRSSIToIcon();
     g_screen_driver.setNetworkState(net_icon);
 
-    g_screen_driver.task(&g_shed_data, g_shed_data.system_asleep, g_network_manager.isConnected());
+    g_screen_driver.task(&g_shed_data, g_shed_data.system_asleep, g_network_manager.isConnected(), g_IOEXP_driver.get_pir_state());
     g_shed_data.app_timers.screen_timer = current_time;
   }
 

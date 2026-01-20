@@ -43,6 +43,8 @@
 #define VERITCAL_BASE_HEIGHT (SCREEN_HEIGHT - 30)
 #define NETWORK_ICOM_HORZ 285
 
+#define PIR_ICON_HORZ 250
+
 #define HORZ_PWRSTS_SECTION_WIDTH_DIVIDER 80  //Power status section across the bottom of the screen, should be factor of 320
 
 // Use hardware SPI (on Uno, #13, #12, #11) and the above for CS/DC
@@ -67,6 +69,7 @@ typedef struct {
   currentScreen current_screen;
   POWER_STATES power_states;
   bool update_power_states;
+  bool PIR_current_State;
   bool screenBL_state;
   UL_TIMER_t screen_change_timer;
 } SCREEN_DATA;
@@ -76,8 +79,8 @@ void SCRNDRV::init() {
   //setup reset and backlight pins.
   pinMode(BACKLIGHT_PIN, OUTPUT);
 
-  pinMode(TOUCHSELECT_PIN,OUTPUT);
-  digitalWrite(TOUCHSELECT_PIN,HIGH);//deselect touchpin select, if connected.
+  pinMode(TOUCHSELECT_PIN, OUTPUT);
+  digitalWrite(TOUCHSELECT_PIN, HIGH);  //deselect touchpin select, if connected.
 
 
   digitalWrite(BACKLIGHT_PIN, BACKLIGHT_ON);
@@ -89,6 +92,8 @@ void SCRNDRV::init() {
   this->setNetworkState(not_connected);
   g_screen_data.current_screen = CS_none;
 
+
+  g_screen_data.PIR_current_State = false;
   g_screen_data.update_power_states = true;
 
 
@@ -435,11 +440,13 @@ void SCRNDRV::resetScreenVars() {
   g_screen_data.current_network_icon = signal_none;
 }
 
-void SCRNDRV::task(SHED_APP* shd_data, bool sys_sleep, bool net_isConnected) {
+void SCRNDRV::task(SHED_APP* shd_data, bool sys_sleep, bool net_isConnected, bool PIR_state) {
 
   //the fxn will deal with the repeat calls.
   bool BLstate = (sys_sleep) ? false : true;
   this->fadeBackLight(BLstate);
+
+  this->setPIRIcon(PIR_state);
 
 
   this->setPowerStates(shd_data->power_states.lights,
@@ -448,8 +455,8 @@ void SCRNDRV::task(SHED_APP* shd_data, bool sys_sleep, bool net_isConnected) {
                        shd_data->power_states.misc);
 
 
-    //check if the timer has elapsed and change the screen accordingly.
-    unsigned long current_time = millis();
+  //check if the timer has elapsed and change the screen accordingly.
+  unsigned long current_time = millis();
   if (!shd_data->sleep_countdown_act) {
 
     if ((current_time - g_screen_data.screen_change_timer) > SCREEN_CHANGE_TIMEOUT) {
@@ -487,6 +494,18 @@ void SCRNDRV::task(SHED_APP* shd_data, bool sys_sleep, bool net_isConnected) {
   }
 }
 
+#define PIR_GRFX_WIDTH 40
+#define PIR_GRFX_HEIGHT 30
+void SCRNDRV::setPIRIcon(bool state) {
+
+  if (g_screen_data.PIR_current_State != state) {
+    g_screen_data.PIR_current_State = state;
+
+    if (g_screen_data.PIR_current_State) {
+      tft.drawRGBBitmap(PIR_ICON_HORZ, 50, (uint16_t*)pir_detected_grfx, PIR_GRFX_WIDTH, PIR_GRFX_HEIGHT);
+    }
+  }
+}
 
 /*
 Changes the screen type to next screen - sets up the staic compoents for the 
