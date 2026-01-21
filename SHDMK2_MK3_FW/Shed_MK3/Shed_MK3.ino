@@ -495,13 +495,19 @@ void doorStateChanged(bool DS) {
 
 
 void start_sleep_countdown() {
-  g_shed_data.app_timers.sys_sleep_timer = COUNTDOWN_TIME_SECONDS;
-  g_shed_data.sleep_countdown_act = true;
+	//Only start the sleep timer if its not already started, allowing mulitple calls.
+	if(start_sleep_countdown() == false){
+	g_shed_data.app_timers.sys_sleep_timer = COUNTDOWN_TIME_SECONDS;
+	g_shed_data.sleep_countdown_act = true;
+	}
 }
 
 void wake_up() {
   g_shed_data.app_timers.sys_sleep_timer = 0;
   g_shed_data.sleep_countdown_act = false;
+  
+  //Make sure the PIR seen timer doesnt immediately turn the lights off if out of date.
+  g_shed_data.app_timers.lightsaver_timer = current_time + PIR_NODETECTION_SECONDS;
 
   //wake the system
   g_shed_data.system_asleep = false;
@@ -538,31 +544,30 @@ void checkDoorState() {
   }
 }
 
+/*This allows the main lighting to turn off if no one is seen in the 
+shed, this will have no effect if the system is asleep*/
 void check_light_state() {
   static UL_TIMER_t time;
   bool pir = g_IOEXP_driver.get_pir_state();
-  if (g_shed_data.app_timers.system_uptime_1hz != time) {
-    g_shed_data.app_timers.system_uptime_1hz = time;
-    if (pir) {
-      PRINTOUT("SEEN");
-    } else {
-      PRINTOUT("GONE");
-    }
-  }
+	UL_TIMER_t current_time = millis();
 
   if (!g_shed_data.system_asleep) {
-    //This only applies when the system is awake.
-
-    //1. check the PIR state
     if (pir) {
       //The PIR has seen someone, make the sure the lights are on and the timer is started
       g_shed_data.power_states.lights = true;
       MCR_SET_RELAY_STATES;
 
-      g_shed_data.app_timers.lightsaver_timer = 0;
-    }
-
-  }  //system is asleep do nothing
+      g_shed_data.app_timers.lightsaver_timer = current_time + PIR_NODETECTION_SECONDS;
+    }else{
+		//The PIR has not seen anyone
+		if(current_time > g_shed_data.app_timers.lightsaver_timer)
+		{
+		  g_shed_data.power_states.lights = false;
+		  MCR_SET_RELAY_STATES;
+		}
+		
+	}
+  }
 }
 
 

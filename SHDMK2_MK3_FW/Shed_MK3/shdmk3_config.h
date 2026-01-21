@@ -75,6 +75,8 @@ use the below defines to set the states so it is synchronised with the hardware.
 #define MINUTE                        60
 #define DRYER_TIME_MINUTES_SECS       (10 * MINUTE)
 
+#define PIR_NODETECTION_SECONDS		  (5 * MINUTE)
+
 #define LIGHTS_TIME_SECONDS           (2 * MINUTE)
 
 #define NETWORK_POST_METRICS_SECS     (30 * MINUTE) //If this is zero then the task is not performed
