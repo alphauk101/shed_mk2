@@ -43,7 +43,11 @@
 #define VERITCAL_BASE_HEIGHT (SCREEN_HEIGHT - 30)
 #define NETWORK_ICOM_HORZ 285
 
+//PIR ICON 
 #define PIR_ICON_HORZ 250
+#define PIR_ICON_VERT 50
+#define PIR_GRFX_WIDTH 40
+#define PIR_GRFX_HEIGHT 30
 
 #define HORZ_PWRSTS_SECTION_WIDTH_DIVIDER 80  //Power status section across the bottom of the screen, should be factor of 320
 
@@ -438,6 +442,7 @@ void SCRNDRV::resetScreenVars() {
   info_shown = false;
   g_screen_data.update_power_states = true;
   g_screen_data.current_network_icon = signal_none;
+  g_screen_data.PIR_current_State = !g_screen_data.PIR_current_State;
 }
 
 void SCRNDRV::task(SHED_APP* shd_data, bool sys_sleep, bool net_isConnected, bool PIR_state) {
@@ -494,16 +499,17 @@ void SCRNDRV::task(SHED_APP* shd_data, bool sys_sleep, bool net_isConnected, boo
   }
 }
 
-#define PIR_GRFX_WIDTH 40
-#define PIR_GRFX_HEIGHT 30
+
 void SCRNDRV::setPIRIcon(bool state) {
 
   if (g_screen_data.PIR_current_State != state) {
     g_screen_data.PIR_current_State = state;
 
     if (g_screen_data.PIR_current_State) {
-      tft.drawRGBBitmap(PIR_ICON_HORZ, 50, (uint16_t*)pir_detected_grfx, PIR_GRFX_WIDTH, PIR_GRFX_HEIGHT);
-    }
+      tft.drawRGBBitmap(PIR_ICON_HORZ, PIR_ICON_VERT, (uint16_t*)pir_detected_grfx, PIR_GRFX_WIDTH, PIR_GRFX_HEIGHT);
+    }else{
+	  tft.fillRect(PIR_ICON_HORZ, PIR_ICON_VERT, PIR_GRFX_WIDTH, PIR_ICON_VERT, PS_BGCOLOUR_OFF);
+	}
   }
 }
 
