@@ -17,6 +17,8 @@
 
 #define MCR_SET_RELAY_STATES g_IOEXP_driver.set_relay_pins(g_shed_data.power_states.blower, g_shed_data.power_states.lights, g_shed_data.power_states.misc, g_shed_data.power_states.fan);
 
+#define RESET_PIR_LIGHT_TIME g_shed_data.app_timers.lightsaver_timer = PIR_NODETECTION_SECONDS
+
 
 #ifdef DEBUG_OUT
 #define PRINTOUT(X) Serial.println(X)
@@ -60,6 +62,9 @@ bool onehz_callback(void *) {
 
   //General one second counter
   g_shed_data.app_timers.system_uptime_1hz++;
+
+  if (g_shed_data.app_timers.lightsaver_timer > 0)
+        g_shed_data.app_timers.lightsaver_timer--;
 
   //Tick the timers if necessary
   if (g_shed_data.app_timers.sys_sleep_timer > 0)
@@ -160,13 +165,14 @@ void setup() {
   g_shed_data.power_states.misc = DEFAULT_RELAY_STATE;
   g_shed_data.door_status.current_state = false;
   g_shed_data.door_status.open_counter = 0;
+  g_shed_data.system_asleep = false;
 
   pinMode(DOOR_STATUS_PIN, INPUT);
 
   //MUST BE INIT'D BEFORE USING AN PERIPHERALS
   Wire.begin();
 
-  PRINTOUT("Shed MK3 - V0.2 ... Starting");
+  PRINTOUT("Shed MK3 - V0.3 ... Starting");
 
   g_screen_driver.init();
   g_screen_driver.setStartUpMessage();
@@ -208,6 +214,7 @@ void setup() {
 #ifndef NO_DELAY_STARTUP
   //Serial.println("Shed MK3 - V0.1 ... complete");
   g_led_driver.init();
+  PRINTOUT("LED Startup");
   g_screen_driver.updateStartUpMessage("", "", "", "", "LED Driver... OK", "", "");
   //g_screen_driver.setStartUpMessage("Completed...");
 #endif
@@ -261,6 +268,10 @@ void setup() {
   //Small delay to allow visual confirmation
   delay(2000);
 #endif
+
+  RESET_PIR_LIGHT_TIME;
+
+  start_sleep_countdown();
 }
 
 
@@ -495,28 +506,33 @@ void doorStateChanged(bool DS) {
 
 
 void start_sleep_countdown() {
-	//Only start the sleep timer if its not already started, allowing mulitple calls.
-	if(start_sleep_countdown() == false){
-	g_shed_data.app_timers.sys_sleep_timer = COUNTDOWN_TIME_SECONDS;
-	g_shed_data.sleep_countdown_act = true;
-	}
+  //Only start the sleep timer if its not already started, allowing mulitple calls.
+  if (g_shed_data.sleep_countdown_act == false) {
+    g_shed_data.app_timers.sys_sleep_timer = COUNTDOWN_TIME_SECONDS;
+    g_shed_data.sleep_countdown_act = true;
+  }
 }
 
 void wake_up() {
   g_shed_data.app_timers.sys_sleep_timer = 0;
   g_shed_data.sleep_countdown_act = false;
-  
+
   //Make sure the PIR seen timer doesnt immediately turn the lights off if out of date.
-  g_shed_data.app_timers.lightsaver_timer = current_time + PIR_NODETECTION_SECONDS;
+  RESET_PIR_LIGHT_TIME;
+
 
   //wake the system
   g_shed_data.system_asleep = false;
-  g_shed_data.app_timers.lightsaver_timer = 0;
 
   //g_led_driver.show_action_swipe(PXL_RED);
   //trigger an interrupt message to the server.
   if (g_network_manager.isConnected())
     g_network_manager.do_metrics_post(&g_shed_data, TRIGGER_TYPE_INTERRUPT);
+}
+
+void go_to_sleep() {
+  g_shed_data.system_asleep = true;
+  g_shed_data.sleep_countdown_act = false;
 }
 
 
@@ -549,24 +565,33 @@ shed, this will have no effect if the system is asleep*/
 void check_light_state() {
   static UL_TIMER_t time;
   bool pir = g_IOEXP_driver.get_pir_state();
-	UL_TIMER_t current_time = millis();
+  UL_TIMER_t current_time = millis();
 
   if (!g_shed_data.system_asleep) {
     if (pir) {
+      RESET_PIR_LIGHT_TIME;  //ensure this is reset when pir fired
       //The PIR has seen someone, make the sure the lights are on and the timer is started
-      g_shed_data.power_states.lights = true;
-      MCR_SET_RELAY_STATES;
+      if (!g_shed_data.power_states.lights) {
+        g_shed_data.power_states.lights = RELAY_LIGHT_ON;
+        //MCR_SET_RELAY_STATES;
+        PRINTOUT("PIR -> LIGHTS ON!");
+      }
 
-      g_shed_data.app_timers.lightsaver_timer = current_time + PIR_NODETECTION_SECONDS;
-    }else{
-		//The PIR has not seen anyone
-		if(current_time > g_shed_data.app_timers.lightsaver_timer)
-		{
-		  g_shed_data.power_states.lights = false;
-		  MCR_SET_RELAY_STATES;
-		}
-		
-	}
+    } else {
+      //The PIR has not seen anyone
+      if (g_shed_data.app_timers.lightsaver_timer == 0) {
+        if (g_shed_data.power_states.lights) {
+          g_shed_data.power_states.lights = RELAY_LIGHT_OFF;
+          //MCR_SET_RELAY_STATES;
+          PRINTOUT("PIR -> LIGHTS OFF!");
+        }
+      }
+    }
+  } else {
+    if (g_shed_data.power_states.lights == RELAY_LIGHT_ON) {
+      g_shed_data.power_states.lights = RELAY_LIGHT_OFF;
+      PRINTOUT("PIR sleeping -> LIGHTS OFF!");
+    }
   }
 }
 
@@ -595,13 +620,9 @@ void loop() {
   if (g_shed_data.sleep_countdown_act) {
     if (g_shed_data.app_timers.sys_sleep_timer == 0) {
       //timer exp
-      g_shed_data.system_asleep = true;
-      g_shed_data.sleep_countdown_act = false;
-      g_shed_data.show_asleep_LEDS = SHOW_SLEEP_BLINKS;
+      go_to_sleep();
     }
   }
-  //Set the lights, its ok to call the fxn repeatedly
-  g_shed_data.power_states.lights = (g_shed_data.system_asleep) ? RELAY_LIGHT_OFF : RELAY_LIGHT_ON;
 
   //show LED swipe to indicate asleep.
   if (g_shed_data.show_asleep_LEDS > 0) {

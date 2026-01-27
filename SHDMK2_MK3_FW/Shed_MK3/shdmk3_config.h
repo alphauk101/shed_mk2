@@ -7,7 +7,7 @@
 
 
 #define DEBUG_OUT
-#define DEBUG_ENVIRONMENTS 1
+#define DEBUG_ENVIRONMENTS 0
 
 #define DOOR_STATUS_PIN A5
 
@@ -21,7 +21,7 @@
 #define TRIGGER_TYPE_POWERON      "POWERON"
 
 /**********DEFAULT SCREEN MESSAGES********************/
-#define STARTUP_MESSAGE "Shed mk3.... V0.2"
+#define STARTUP_MESSAGE "Shed mk3.... V0.3"
 #define SCREEN_CHANGE_TIMEOUT 10000  //change between screen
 /*****************************************************/
 

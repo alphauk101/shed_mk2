@@ -33,7 +33,7 @@
 
 
 
-#define MCR_SET_DEF_TITLE_POSITION tft.setCursor(10, 20)
+#define MCR_SET_DEF_TITLE_POSITION tft.setCursor(5, 20)
 
 #define SCREEN_HEIGHT 240
 #define SCREEN_WIDTH 320
@@ -44,8 +44,8 @@
 #define NETWORK_ICOM_HORZ 285
 
 //PIR ICON 
-#define PIR_ICON_HORZ 250
-#define PIR_ICON_VERT 50
+#define PIR_ICON_HORZ 235
+#define PIR_ICON_VERT 0
 #define PIR_GRFX_WIDTH 40
 #define PIR_GRFX_HEIGHT 30
 
@@ -508,7 +508,7 @@ void SCRNDRV::setPIRIcon(bool state) {
     if (g_screen_data.PIR_current_State) {
       tft.drawRGBBitmap(PIR_ICON_HORZ, PIR_ICON_VERT, (uint16_t*)pir_detected_grfx, PIR_GRFX_WIDTH, PIR_GRFX_HEIGHT);
     }else{
-	  tft.fillRect(PIR_ICON_HORZ, PIR_ICON_VERT, PIR_GRFX_WIDTH, PIR_ICON_VERT, PS_BGCOLOUR_OFF);
+	  tft.fillRect(PIR_ICON_HORZ, PIR_ICON_VERT, PIR_ICON_VERT, PIR_GRFX_WIDTH, ILI9341_WHITE);
 	}
   }
 }

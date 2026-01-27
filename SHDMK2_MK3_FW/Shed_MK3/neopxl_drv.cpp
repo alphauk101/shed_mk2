@@ -86,19 +86,21 @@ constexpr int redToBlue[][3]{
 
 /*These arrays represent the sides of the box as arrays*/
 constexpr uint8_t boxbottom[]{
-  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+  //10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
 };
 
 constexpr uint8_t boxtop[]{
-  32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42
+  31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41
 };
 
 constexpr uint8_t boxleft[]{
-  22, 23, 24, 25, 26, 27, 28, 29, 30
+  21, 22, 23, 24, 25, 26, 27, 28, 29, 30
 };
 
 constexpr uint8_t boxright[]{
-  1, 2, 3, 4, 5, 6, 7, 8, 9
+  //1, 2, 3, 4, 5, 6, 7, 8, 9
+  0, 1, 2, 3, 4, 5, 6, 7, 8
 };
 
 constexpr uint8_t boxwipe_side_index[][2]{
@@ -193,15 +195,19 @@ void SHDPIXEL::init() {
 #endif
 
   strip.begin();  // INITIALIZE NeoPixel strip object (REQUIRED)  // Turn OFF all pixels ASAP
+  g_led_data.g_sys_asleep = false;
+  g_led_data.last_temperature = 0;
   strip.setBrightness(DEFAULT_BRIGHTNESS);
   MCR_CLEAR_STRIP;
   //this->set_box_right(strip.Color(255, 255, 255));
   //this->set_box_left(strip.Color(255, 255, 255));
   // this->set_box_topbottm(true, true, strip.Color(255, 255, 255));
   //this->set_all(strip.Color(255, 255, 255));
+
+
 #define NEW_STARTUP
 #ifdef NEW_STARTUP
-  this->side_wipe(10, strip.Color(255, 0, 0));
+  this->side_wipe(5, strip.Color(255, 0, 0), true);
 
 #else
   int a = 1;
@@ -217,8 +223,6 @@ void SHDPIXEL::init() {
     delay(100);
   }
 #endif
-  g_led_data.g_sys_asleep = false;
-  g_led_data.last_temperature = 0;
 }
 
 uint32_t SHDPIXEL::convert_color_to_32bit(int col) {
@@ -251,7 +255,7 @@ LED colours*/
 #define FADE_SPEED 5
 void SHDPIXEL::show_temperature_as_color(float temperature) {
   //if asleep then return here.
-  MCR_SLEEP_GUARD();
+  //MCR_SLEEP_GUARD();
 
 
   if (temperature > TEMP_HIGHEST) temperature = TEMP_HIGHEST;
@@ -293,16 +297,34 @@ void SHDPIXEL::task(bool asleep) {
   }
 }
 
-void SHDPIXEL::side_wipe(uint16_t speed, uint32_t color) {
-  MCR_SLEEP_GUARD();
+
+void SHDPIXEL::side_wipe(uint16_t speed, uint32_t color, bool ignore_sleep) {
+// PHASE 1: Bottom only
   MCR_CLEAR_STRIP;
+  this->set_box_topbottm(false, true, color); 
+  this->do_brightness_swipe(true, speed);
+  this->do_brightness_swipe(false, speed);
+  delay(100);
 
-  strip.setBrightness(0);
+  // PHASE 2: Bottom + Sides
+  MCR_CLEAR_STRIP; // This clears pixel data
+  this->set_box_topbottm(false, true, color);
   this->set_box_right(color);
+  this->set_box_left(color);
+  // Brightness is already 0 from the end of previous do_brightness_swipe(false)
+  this->do_brightness_swipe(true, speed);
+  this->do_brightness_swipe(false, speed);
+  delay(100);
 
+  // PHASE 3: Full Box
+  MCR_CLEAR_STRIP;
+  this->set_box_topbottm(true, true, color);
+  this->set_box_right(color);
+  this->set_box_left(color);
   this->do_brightness_swipe(true, speed);
   this->do_brightness_swipe(false, speed);
 }
+
 
 void SHDPIXEL::do_brightness_swipe(bool swipeUP, int speed) {
   // Determine direction: 1 for up, -1 for down
@@ -326,7 +348,7 @@ at given speed.
 */
 void SHDPIXEL::box_wipe(bool direction, uint16_t speed, uint32_t color) {
 
-  MCR_SLEEP_GUARD();
+  //MCR_SLEEP_GUARD();
 
   MCR_CLEAR_STRIP;
   //true = up, false = down;
@@ -365,7 +387,7 @@ void SHDPIXEL::box_wipe(bool direction, uint16_t speed, uint32_t color) {
 }
 
 void SHDPIXEL::set_all(uint32_t color) {
-  MCR_SLEEP_GUARD();
+  //MCR_SLEEP_GUARD();
   MCR_CLEAR_STRIP;
   strip.fill(color, 0, LED_COUNT);
 
@@ -373,11 +395,10 @@ void SHDPIXEL::set_all(uint32_t color) {
 }
 
 void SHDPIXEL::set_box_right(uint32_t color) {
-  MCR_SLEEP_GUARD();
   for (int a = 0; a < sizeof(boxright); a++) {
     strip.setPixelColor(boxright[a], color);
   }
-  strip.show();
+  //strip.show();
 }
 
 void SHDPIXEL::set_box_left(uint32_t color) {
@@ -386,7 +407,7 @@ void SHDPIXEL::set_box_left(uint32_t color) {
     strip.setPixelColor(boxleft[a], color);
   }
 
-  strip.show();
+  //strip.show();
 }
 
 /*
@@ -394,7 +415,7 @@ Sets the given colour to the top and or the bottom, if false is passed to
 either side then it is not changed
 */
 void SHDPIXEL::set_box_topbottm(bool top, bool bottom, uint32_t color) {
-  MCR_SLEEP_GUARD();
+  //MCR_SLEEP_GUARD();
   if (top) {
     for (int a = 0; a < sizeof(boxtop); a++) {
       strip.setPixelColor(boxtop[a], color);
@@ -402,10 +423,9 @@ void SHDPIXEL::set_box_topbottm(bool top, bool bottom, uint32_t color) {
   }
 
   if (bottom) {
-    for (int a = 0; a < sizeof(boxtop); a++) {
+    for (int a = 0; a < sizeof(boxbottom); a++) {
       strip.setPixelColor(boxbottom[a], color);
     }
   }
-
-  strip.show();
+  //strip.show();
 }

@@ -11,7 +11,7 @@ uint8_t address[] = { 0x28, 0x65, 0xCA, 0x5C, 0x6, 0x0, 0x0, 0xB2 };
 #else
 uint8_t address[] = { 0x28, 0x3E, 0x99, 0x5C, 0x6, 0x0, 0x0, 0xBF };
 #endif
-uint8_t selected;
+uint8_t selected; 
 
 
 bool EXTTEMP::init() {
@@ -19,7 +19,7 @@ bool EXTTEMP::init() {
 
   if (sens_ok)
   {
-    ds.setResolution(RES_12_BIT);
+    ds.setResolution(RES_9_BIT);
   }
   return sens_ok;
  // ds.setAlarms(LOW_ALARM, HIGH_ALARM);
