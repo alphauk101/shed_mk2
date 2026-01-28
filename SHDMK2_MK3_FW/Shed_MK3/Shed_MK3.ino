@@ -465,8 +465,6 @@ static void check_task_timers() {
 }
 
 
-
-
 networkState_icon convertRSSIToIcon() {
   g_shed_data.network_info.latest_RSSI = g_network_manager.getRSSI();
   // Serial.print("RSSI: ");
@@ -519,7 +517,6 @@ void wake_up() {
 
   //Make sure the PIR seen timer doesnt immediately turn the lights off if out of date.
   RESET_PIR_LIGHT_TIME;
-
 
   //wake the system
   g_shed_data.system_asleep = false;

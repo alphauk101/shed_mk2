@@ -49,7 +49,6 @@ WiFiUDP Udp;
 
 bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
   
-
   postBody.reserve(256);
 
   // check for the WiFi module:
@@ -68,9 +67,11 @@ bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
   return this->connect_to_WIFI_network(scrn_ptr);
 }
 
+
 bool NETMANAGER::connect_to_WIFI_network(SCRNDRV* scrn_ptr)
 {
   int timeout = 10;
+  status = WL_IDLE_STATUS; //bug: wasnt set -> retaining out of date state
   // attempt to connect to WiFi network:
   while ((status != WL_CONNECTED) && (timeout > 0)) {
     // Connect to WPA/WPA2 network:
@@ -188,7 +189,8 @@ void NETMANAGER::getIP(String& ip_ptr) {
 }
 
 bool NETMANAGER::isConnected() {
-  return (WiFi.status() == WL_CONNECTED);
+  status = WiFi.status();
+  return (status == WL_CONNECTED);
 }
 
 //String NETMANAGER::isConnected() {

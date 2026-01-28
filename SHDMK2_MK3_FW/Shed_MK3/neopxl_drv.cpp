@@ -13,7 +13,6 @@ float freq = 50;
 Adafruit_ZeroTimer zerotimer = Adafruit_ZeroTimer(3);
 #endif
 
-
 #define MCR_SLEEP_GUARD(X) \
   if (g_led_data.g_sys_asleep) return X
 
@@ -27,10 +26,11 @@ Adafruit_ZeroTimer zerotimer = Adafruit_ZeroTimer(3);
 #define DEFAULT_BRIGHTNESS 200
 
 #define MCR_CLEAR_STRIP \
-  strip.clear(); \
-  strip.show()
+          strip.clear(); \
+          strip.setBrightness(DEFAULT_BRIGHTNESS); \
+          strip.show()
 
-typedef struct {
+  typedef struct {
   bool g_sys_asleep;
 
   int last_temperature;
@@ -104,7 +104,6 @@ constexpr uint8_t boxright[]{
 };
 
 constexpr uint8_t boxwipe_side_index[][2]{
-
   { boxleft[8], boxright[0] },
   { boxleft[7], boxright[1] },
   { boxleft[6], boxright[2] },
@@ -114,7 +113,6 @@ constexpr uint8_t boxwipe_side_index[][2]{
   { boxleft[2], boxright[6] },
   { boxleft[1], boxright[7] },
   { boxleft[0], boxright[8] },
-
 };
 
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -257,7 +255,6 @@ void SHDPIXEL::show_temperature_as_color(float temperature) {
   //if asleep then return here.
   //MCR_SLEEP_GUARD();
 
-
   if (temperature > TEMP_HIGHEST) temperature = TEMP_HIGHEST;
   if (temperature < TEMP_LOWEST) temperature = TEMP_LOWEST;
 
@@ -299,30 +296,36 @@ void SHDPIXEL::task(bool asleep) {
 
 
 void SHDPIXEL::side_wipe(uint16_t speed, uint32_t color, bool ignore_sleep) {
-// PHASE 1: Bottom only
   MCR_CLEAR_STRIP;
-  this->set_box_topbottm(false, true, color); 
-  this->do_brightness_swipe(true, speed);
-  this->do_brightness_swipe(false, speed);
+  this->set_box_topbottm(false, true, color);
+  strip.setBrightness(DEFAULT_BRIGHTNESS);
+  strip.show();  // Ensure the hardware actually updates
+  //this->do_brightness_swipe(true, speed);
+  //this->do_brightness_swipe(false, speed);
   delay(100);
 
-  // PHASE 2: Bottom + Sides
-  MCR_CLEAR_STRIP; // This clears pixel data
+
+  MCR_CLEAR_STRIP;  // This clears pixel data
   this->set_box_topbottm(false, true, color);
   this->set_box_right(color);
   this->set_box_left(color);
+  strip.setBrightness(DEFAULT_BRIGHTNESS);
+  strip.show();  // Ensure the hardware actually updates
   // Brightness is already 0 from the end of previous do_brightness_swipe(false)
-  this->do_brightness_swipe(true, speed);
-  this->do_brightness_swipe(false, speed);
+  //this->do_brightness_swipe(true, speed);
+  //this->do_brightness_swipe(false, speed);
   delay(100);
 
-  // PHASE 3: Full Box
+
   MCR_CLEAR_STRIP;
   this->set_box_topbottm(true, true, color);
   this->set_box_right(color);
   this->set_box_left(color);
-  this->do_brightness_swipe(true, speed);
-  this->do_brightness_swipe(false, speed);
+  strip.setBrightness(DEFAULT_BRIGHTNESS);
+  strip.show();  // Ensure the hardware actually updates
+
+  //this->do_brightness_swipe(true, speed);
+  //this->do_brightness_swipe(false, speed);
 }
 
 
@@ -398,16 +401,12 @@ void SHDPIXEL::set_box_right(uint32_t color) {
   for (int a = 0; a < sizeof(boxright); a++) {
     strip.setPixelColor(boxright[a], color);
   }
-  //strip.show();
 }
 
 void SHDPIXEL::set_box_left(uint32_t color) {
-
   for (int a = 0; a < sizeof(boxleft); a++) {
     strip.setPixelColor(boxleft[a], color);
   }
-
-  //strip.show();
 }
 
 /*
@@ -423,8 +422,8 @@ void SHDPIXEL::set_box_topbottm(bool top, bool bottom, uint32_t color) {
   }
 
   if (bottom) {
-    for (int a = 0; a < sizeof(boxbottom); a++) {
-      strip.setPixelColor(boxbottom[a], color);
+    for (int b = 0; b < sizeof(boxbottom); b++) {
+      strip.setPixelColor(boxbottom[b], color);
     }
   }
   //strip.show();
