@@ -9,6 +9,7 @@
 #define PXL_RED     1
 #define PXL_BLUE    2
 #define PXL_GREEN   3
+#define DEFAULT_WAKE_COLOUR           strip.Color(0, 255, 0)
 
 class SHDPIXEL {
 public:
@@ -17,11 +18,13 @@ public:
   void task(bool);
   void show_temperature_as_color(float temperature);
   void show_action_swipe(int);
+  void show_low_awake_colour(void);
+  void show_lights_off_wake(void);
 private:
   void set_box_topbottm(bool top, bool bottom, uint32_t color);
   void set_box_right(uint32_t color);
   void set_box_left(uint32_t color);
-  void side_wipe(uint16_t speed, uint32_t color, bool ignore_sleep);
+  void side_wipe(const uint16_t speed, const uint32_t color, const bool ignore_sleep);
   void set_all(uint32_t color);
   uint32_t convert_color_to_32bit(int);
   void do_brightness_swipe(bool swipeUP, int speed);

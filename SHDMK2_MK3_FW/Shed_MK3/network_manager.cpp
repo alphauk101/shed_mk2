@@ -63,7 +63,6 @@ bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
     Serial.println(fv);
     return false;
   }
-  
   return this->connect_to_WIFI_network(scrn_ptr);
 }
 
@@ -71,8 +70,10 @@ bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
 bool NETMANAGER::connect_to_WIFI_network(SCRNDRV* scrn_ptr)
 {
   int timeout = 10;
-  status = WL_IDLE_STATUS; //bug: wasnt set -> retaining out of date state
-  // attempt to connect to WiFi network:
+
+  //This updates the status incase we dont need to connect.
+  this->isConnected();
+
   while ((status != WL_CONNECTED) && (timeout > 0)) {
     // Connect to WPA/WPA2 network:
     status = WiFi.begin(ssid, pass);
