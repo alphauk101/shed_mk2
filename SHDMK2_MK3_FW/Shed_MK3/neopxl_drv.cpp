@@ -239,7 +239,6 @@ uint32_t SHDPIXEL::convert_color_to_32bit(int col) {
   return out_colour;
 }
 
-
 void SHDPIXEL::show_action_swipe(int color) {
   uint32_t colour = this->convert_color_to_32bit(color);
 
@@ -247,13 +246,49 @@ void SHDPIXEL::show_action_swipe(int color) {
   this->box_wipe(false, 50, colour);
 }
 
+void SHDPIXEL::show_low_awake_colour()
+{
+  //This is a wake only task so check its not showing when asleep.
+  MCR_SLEEP_GUARD();
+
+  strip.fill(DEFAULT_WAKE_COLOUR, 0, LED_COUNT);
+  strip.setBrightness(DEFAULT_BRIGHTNESS);
+  strip.show();
+}
+
+uint32_t sleep_colours[5] = {
+  strip.Color(0, 0, 255),
+  strip.Color(0, 255, 0),
+  strip.Color(255, 0, 0),
+  strip.Color(255, 0, 255),
+  strip.Color(255, 255, 255),
+};
+uint8_t s_counter = 0;
+#define SLEEP_LIGHT_SPEED   5
+void SHDPIXEL::show_lights_off_wake()
+{
+  MCR_SLEEP_GUARD();
+
+  strip.fill(sleep_colours[s_counter], 0, LED_COUNT);
+  this->do_brightness_swipe(true, SLEEP_LIGHT_SPEED);
+  this->do_brightness_swipe(false, SLEEP_LIGHT_SPEED);
+
+  if(s_counter == sizeof(sleep_colours)){
+    s_counter = 0;
+  }else{
+    s_counter++;
+  }
+}
+
+
 /*
 Converts given temperature into a colour red hottest, blue coldest and shows
 LED colours*/
 #define FADE_SPEED 5
 void SHDPIXEL::show_temperature_as_color(float temperature) {
   //if asleep then return here.
-  //MCR_SLEEP_GUARD();
+  //This is a wake only task so check its not showing when asleep.
+  MCR_SLEEP_GUARD();
 
   if (temperature > TEMP_HIGHEST) temperature = TEMP_HIGHEST;
   if (temperature < TEMP_LOWEST) temperature = TEMP_LOWEST;
@@ -295,7 +330,8 @@ void SHDPIXEL::task(bool asleep) {
 }
 
 
-void SHDPIXEL::side_wipe(uint16_t speed, uint32_t color, bool ignore_sleep) {
+void SHDPIXEL::side_wipe(const uint16_t speed, const uint32_t color, const bool ignore_sleep) 
+{
   MCR_CLEAR_STRIP;
   this->set_box_topbottm(false, true, color);
   strip.setBrightness(DEFAULT_BRIGHTNESS);
@@ -324,8 +360,6 @@ void SHDPIXEL::side_wipe(uint16_t speed, uint32_t color, bool ignore_sleep) {
   strip.setBrightness(DEFAULT_BRIGHTNESS);
   strip.show();  // Ensure the hardware actually updates
 
-  //this->do_brightness_swipe(true, speed);
-  //this->do_brightness_swipe(false, speed);
 }
 
 
@@ -382,7 +416,8 @@ void SHDPIXEL::box_wipe(bool direction, uint16_t speed, uint32_t color) {
     delay(speed);
   }
 
-  if (direction) {
+  if (direction) 
+  {
     this->set_box_topbottm(true, false, color);
   } else {
     MCR_CLEAR_STRIP;
@@ -393,18 +428,21 @@ void SHDPIXEL::set_all(uint32_t color) {
   //MCR_SLEEP_GUARD();
   MCR_CLEAR_STRIP;
   strip.fill(color, 0, LED_COUNT);
-
   strip.show();
 }
 
-void SHDPIXEL::set_box_right(uint32_t color) {
-  for (int a = 0; a < sizeof(boxright); a++) {
+void SHDPIXEL::set_box_right(uint32_t color) 
+{
+  for (int a = 0; a < sizeof(boxright); a++) 
+  {
     strip.setPixelColor(boxright[a], color);
   }
 }
 
-void SHDPIXEL::set_box_left(uint32_t color) {
-  for (int a = 0; a < sizeof(boxleft); a++) {
+void SHDPIXEL::set_box_left(uint32_t color) 
+{
+  for (int a = 0; a < sizeof(boxleft); a++) 
+  {
     strip.setPixelColor(boxleft[a], color);
   }
 }

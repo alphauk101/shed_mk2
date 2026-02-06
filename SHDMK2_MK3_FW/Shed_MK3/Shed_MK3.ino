@@ -411,7 +411,13 @@ static void check_task_timers() {
 
   //Check LED default state
   if ((current_time - g_shed_data.app_timers.led_timer) > LED_DEFAULT_TIME) {
-    g_led_driver.show_temperature_as_color(g_shed_data.environmentals.internal_temp);
+    //g_led_driver.show_temperature_as_color(g_shed_data.environmentals.internal_temp);
+    //Keep it boring at the moment.
+    if(g_shed_data.power_states.lights){
+      g_led_driver.show_low_awake_colour();
+    }else{
+      g_led_driver.show_lights_off_wake();
+    }
     //g_led_driver.show_temperature_as_color(count++);
     g_shed_data.app_timers.led_timer = current_time;
   }
@@ -421,7 +427,10 @@ static void check_task_timers() {
     networkState_icon net_icon = convertRSSIToIcon();
     g_screen_driver.setNetworkState(net_icon);
 
-    g_screen_driver.task(&g_shed_data, g_shed_data.system_asleep, g_network_manager.isConnected(), g_IOEXP_driver.get_pir_state());
+    g_screen_driver.task(&g_shed_data, 
+                          g_shed_data.system_asleep, 
+                          g_network_manager.isConnected(), 
+                          g_IOEXP_driver.get_pir_state());
     g_shed_data.app_timers.screen_timer = current_time;
   }
 
@@ -568,12 +577,12 @@ void check_light_state() {
     if (pir) {
       RESET_PIR_LIGHT_TIME;  //ensure this is reset when pir fired
       //The PIR has seen someone, make the sure the lights are on and the timer is started
-      if (!g_shed_data.power_states.lights) {
+      if (!g_shed_data.power_states.lights) 
+      {
         g_shed_data.power_states.lights = RELAY_LIGHT_ON;
         //MCR_SET_RELAY_STATES;
         PRINTOUT("PIR -> LIGHTS ON!");
       }
-
     } else {
       //The PIR has not seen anyone
       if (g_shed_data.app_timers.lightsaver_timer == 0) {
@@ -591,7 +600,6 @@ void check_light_state() {
     }
   }
 }
-
 
 
 void check_blower_relay_timer() {
@@ -632,3 +640,4 @@ void loop() {
   MCR_SET_RELAY_STATES;
   delay(MAIN_LOOP_DELAY);
 }
+
