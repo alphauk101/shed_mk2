@@ -3,7 +3,7 @@
 #include "RTClib.h"
 
 
-#define PROTO_HARDWARE //Define if using proto hardware only
+//#define PROTO_HARDWARE //Define if using proto hardware only
 
 
 #define DEBUG_OUT
@@ -82,7 +82,7 @@ use the below defines to set the states so it is synchronised with the hardware.
 #define NETWORK_POST_METRICS_SECS     (30 * MINUTE) //If this is zero then the task is not performed
 //#define NETWORK_POST_METRICS_SECS     (10) //If this is zero then the task is not performed
 
-#define WIFI_CONNECT_CHECK_SECS       (60 * MINUTE) //perform a check to connect to wifi if lost.
+#define WIFI_CONNECT_CHECK_SECS       (1 * MINUTE) //perform a check to connect to wifi if lost.
 
 typedef unsigned long UL_TIMER_t;
 

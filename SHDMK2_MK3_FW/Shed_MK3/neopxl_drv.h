@@ -6,9 +6,9 @@
 //Uses a hardware timer to apply frame data to LEDs
 //#define LED_TIMER_FRAMING
 
-#define PXL_RED     1
-#define PXL_BLUE    2
-#define PXL_GREEN   3
+#define PXL_RED 1
+#define PXL_BLUE 2
+#define PXL_GREEN 3
 
 class SHDPIXEL {
 public:
@@ -25,7 +25,7 @@ private:
   void set_all(uint32_t color);
   uint32_t convert_color_to_32bit(int);
   void do_brightness_swipe(bool swipeUP, int speed);
-
+  void rainbow(int wait);
 };
 
 #endif

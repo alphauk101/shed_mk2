@@ -205,8 +205,8 @@ void SHDPIXEL::init() {
 
 #define NEW_STARTUP
 #ifdef NEW_STARTUP
-  this->side_wipe(5, strip.Color(255, 0, 0), true);
-
+  //this->side_wipe(5, strip.Color(255, 0, 0), true);
+  this->rainbow(10); 
 #else
   int a = 1;
   while (a-- > 0) {
@@ -302,7 +302,7 @@ void SHDPIXEL::side_wipe(uint16_t speed, uint32_t color, bool ignore_sleep) {
   strip.show();  // Ensure the hardware actually updates
   //this->do_brightness_swipe(true, speed);
   //this->do_brightness_swipe(false, speed);
-  delay(100);
+  delay(200);
 
 
   MCR_CLEAR_STRIP;  // This clears pixel data
@@ -314,7 +314,7 @@ void SHDPIXEL::side_wipe(uint16_t speed, uint32_t color, bool ignore_sleep) {
   // Brightness is already 0 from the end of previous do_brightness_swipe(false)
   //this->do_brightness_swipe(true, speed);
   //this->do_brightness_swipe(false, speed);
-  delay(100);
+  delay(200);
 
 
   MCR_CLEAR_STRIP;
@@ -408,6 +408,28 @@ void SHDPIXEL::set_box_left(uint32_t color) {
     strip.setPixelColor(boxleft[a], color);
   }
 }
+
+// Rainbow cycle along whole strip. Pass delay time (in ms) between frames.
+void SHDPIXEL::rainbow(int wait) {
+  // Hue of first pixel runs 5 complete loops through the color wheel.
+  // Color wheel has a range of 65536 but it's OK if we roll over, so
+  // just count from 0 to 5*65536. Adding 256 to firstPixelHue each time
+  // means we'll make 5*65536/256 = 1280 passes through this loop:
+  for(long firstPixelHue = 0; firstPixelHue < 5*65536; firstPixelHue += 256) {
+    // strip.rainbow() can take a single argument (first pixel hue) or
+    // optionally a few extras: number of rainbow repetitions (default 1),
+    // saturation and value (brightness) (both 0-255, similar to the
+    // ColorHSV() function, default 255), and a true/false flag for whether
+    // to apply gamma correction to provide 'truer' colors (default true).
+    strip.rainbow(firstPixelHue);
+    // Above line is equivalent to:
+    // strip.rainbow(firstPixelHue, 1, 255, 255, true);
+    strip.show(); // Update strip with new contents
+    delay(wait);  // Pause for a moment
+  }
+}
+
+
 
 /*
 Sets the given colour to the top and or the bottom, if false is passed to 

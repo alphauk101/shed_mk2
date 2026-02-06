@@ -437,14 +437,14 @@ static void check_task_timers() {
       we have amaximum of 2 tries and then it gives up. The attempts 
       are reset at midnight, this of course wont work if the RTC is not 
       functioning howver, at this point there is a bigger issue anyway.*/
-      PRINTOUT("RTC not set requesting time");
+      //PRINTOUT("RTC not set requesting time");
       if (g_network_manager.isConnected()) {
         if (RTC_fail_count < MAX_RTC_ATTEMPTS) {
           //auto epoch = g_network_manager.getTime();
           unsigned long epoch = g_network_manager.getTime();
           RTC_fail_count++;
           if (epoch != 0) {
-            PRINTOUT("Time recieved setting RTC from network");
+            //PRINTOUT("Time recieved setting RTC from network");
             g_rtc_driver.setTIme(epoch);
           }
         } else {
