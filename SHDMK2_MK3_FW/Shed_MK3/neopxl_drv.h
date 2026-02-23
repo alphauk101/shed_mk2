@@ -28,7 +28,7 @@ private:
   void set_all(uint32_t color);
   uint32_t convert_color_to_32bit(int);
   void do_brightness_swipe(bool swipeUP, int speed);
-
+  void rainbow(int wait);
 };
 
 #endif
