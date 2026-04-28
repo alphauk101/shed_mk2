@@ -8,6 +8,7 @@
 #include "network_manager.h"
 #include "rtc_driver.h"
 #include <arduino-timer.h>
+#include "fan_controller.h"
 
 
 
@@ -49,6 +50,8 @@ static RTCDRV g_rtc_driver;
 //Single point of truth for app data/manager
 static SHED_APP g_shed_data;
 
+static fan_cntrllr g_fan_controller;
+
 UL_TIMER_t fw_led_timer = 0;
 UL_TIMER_t WIFI_check_timer = 0;
 static int RTC_fail_count = 0;
@@ -64,7 +67,7 @@ bool onehz_callback(void *) {
   g_shed_data.app_timers.system_uptime_1hz++;
 
   if (g_shed_data.app_timers.lightsaver_timer > 0)
-        g_shed_data.app_timers.lightsaver_timer--;
+    g_shed_data.app_timers.lightsaver_timer--;
 
   //Tick the timers if necessary
   if (g_shed_data.app_timers.sys_sleep_timer > 0)
@@ -139,6 +142,8 @@ void setup() {
 
 
 
+
+
 //#define GRAB_UUID
 #ifdef GRAB_UUID
   // Read the 128-bit unique ID
@@ -155,7 +160,6 @@ void setup() {
   }
   Serial.println();
 #endif
-
   g_shed_data.network_info.connected = false;
 
   //Set the default relay state
@@ -171,6 +175,21 @@ void setup() {
 
   //MUST BE INIT'D BEFORE USING AN PERIPHERALS
   Wire.begin();
+
+  PRINTOUT("starting PWM");
+  g_fan_controller.init();
+
+  g_fan_controller.setFanLevel(g_fan_controller.FAN_ON);
+  delay(1000);
+  g_fan_controller.setFanLevel(g_fan_controller.FAN_75);
+  delay(1000);
+  g_fan_controller.setFanLevel(g_fan_controller.FAN_50);
+  delay(1000);
+  g_fan_controller.setFanLevel(g_fan_controller.FAN_25);
+  delay(1000);
+  g_fan_controller.setFanLevel(g_fan_controller.FAN_50);
+
+
 
   PRINTOUT("Shed MK3 - V0.3 ... Starting");
 
@@ -216,7 +235,7 @@ void setup() {
   g_led_driver.init();
   PRINTOUT("LED Startup");
   g_screen_driver.updateStartUpMessage("", "", "", "", "LED Driver... OK", "", "");
-  //g_screen_driver.setStartUpMessage("Completed...");
+//g_screen_driver.setStartUpMessage("Completed...");
 #endif
 
   //Set the startup network state
@@ -238,6 +257,7 @@ void setup() {
   } else {
     g_screen_driver.updateStartUpMessage("", "", "", "", "", "", "RTC...ERROR");
   }
+
 
   timer.every(1000, onehz_callback);
 
@@ -272,6 +292,8 @@ void setup() {
   RESET_PIR_LIGHT_TIME;
 
   start_sleep_countdown();
+
+  // g_fan_controller.setPWMDuty(20); //full speed
 }
 
 
@@ -413,9 +435,9 @@ static void check_task_timers() {
   if ((current_time - g_shed_data.app_timers.led_timer) > LED_DEFAULT_TIME) {
     //g_led_driver.show_temperature_as_color(g_shed_data.environmentals.internal_temp);
     //Keep it boring at the moment.
-    if(g_shed_data.power_states.lights){
+    if (g_shed_data.power_states.lights) {
       g_led_driver.show_low_awake_colour();
-    }else{
+    } else {
       g_led_driver.show_lights_off_wake();
     }
     //g_led_driver.show_temperature_as_color(count++);
@@ -427,10 +449,10 @@ static void check_task_timers() {
     networkState_icon net_icon = convertRSSIToIcon();
     g_screen_driver.setNetworkState(net_icon);
 
-    g_screen_driver.task(&g_shed_data, 
-                          g_shed_data.system_asleep, 
-                          g_network_manager.isConnected(), 
-                          g_IOEXP_driver.get_pir_state());
+    g_screen_driver.task(&g_shed_data,
+                         g_shed_data.system_asleep,
+                         g_network_manager.isConnected(),
+                         g_IOEXP_driver.get_pir_state());
     g_shed_data.app_timers.screen_timer = current_time;
   }
 
@@ -577,8 +599,7 @@ void check_light_state() {
     if (pir) {
       RESET_PIR_LIGHT_TIME;  //ensure this is reset when pir fired
       //The PIR has seen someone, make the sure the lights are on and the timer is started
-      if (!g_shed_data.power_states.lights) 
-      {
+      if (!g_shed_data.power_states.lights) {
         g_shed_data.power_states.lights = RELAY_LIGHT_ON;
         //MCR_SET_RELAY_STATES;
         PRINTOUT("PIR -> LIGHTS ON!");
@@ -612,7 +633,7 @@ void check_blower_relay_timer() {
 }
 
 
-
+UL_TIMER_t test_timer = 0;
 void loop() {
 
   //Do all time related tasks... blocking.
@@ -639,5 +660,9 @@ void loop() {
   timer.tick();  // tick the timer
   MCR_SET_RELAY_STATES;
   delay(MAIN_LOOP_DELAY);
-}
 
+  if (g_shed_data.app_timers.system_uptime_1hz > test_timer) {
+    PRINTOUT(g_fan_controller.getRPM());
+    test_timer = g_shed_data.app_timers.system_uptime_1hz;
+  }
+}

@@ -1,5 +1,6 @@
 #ifndef __SCRN_DRV_H_
 #define __SCRN_DRV_H_
+#include <Arduino.h>
 #include <string>
 #include "shdmk3_config.h"
 

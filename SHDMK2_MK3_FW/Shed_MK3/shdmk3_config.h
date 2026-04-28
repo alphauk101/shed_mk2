@@ -3,7 +3,7 @@
 #include "RTClib.h"
 
 
-//#define PROTO_HARDWARE //Define if using proto hardware only
+#define PROTO_HARDWARE //Define if using proto hardware only
 
 
 #define DEBUG_OUT
@@ -38,6 +38,9 @@ use the below defines to set the states so it is synchronised with the hardware.
 */
 #define BUTTON_A                  1
 #define BUTTON_B                  2
+
+#define FAN_CNTRL_OUTPUT          5
+#define DEFAULT_FAN_SPEED         75
 
 #define RELAY_ON                  true
 #define RELAY_OFF                 false

@@ -125,7 +125,7 @@ void NETMANAGER::do_metrics_post(SHED_APP* shddata_ptr, String trigger) {
              + "\",\"Lights\":\"" + lis
              + "\",\"trigger\":\"" + trigger
              + "\"}";
-  Serial.print(postBody);
+  //Serial.print(postBody);
 }
 
 
@@ -260,7 +260,7 @@ bool NETMANAGER::start_client_connection() {
   httpClient.print(postBody);
   httpClient.endRequest();
 
-  Serial.println("connecting to server; completed.");
+  //Serial.println("connecting to server; completed.");
 
 
   //  }
@@ -284,7 +284,7 @@ void NETMANAGER::get_server_response() {
 unsigned long NETMANAGER::parseTimeFromPacket() {
   //uint8_t t_packet[3];
   if (Udp.parsePacket()) {
-    Serial.println("packet received");
+    //Serial.println("packet received");
     // We've received a packet, read the data from it
     Udp.read(packetBuffer, NTP_PACKET_SIZE);  // read the packet into the buffer
 
@@ -296,39 +296,39 @@ unsigned long NETMANAGER::parseTimeFromPacket() {
     // combine the four bytes (two words) into a long integer
     // this is NTP time (seconds since Jan 1 1900):
     unsigned long secsSince1900 = highWord << 16 | lowWord;
-    Serial.print("Seconds since Jan 1 1900 = ");
-    Serial.println(secsSince1900);
+    //Serial.print("Seconds since Jan 1 1900 = ");
+    //Serial.println(secsSince1900);
 
     // now convert NTP time into everyday time:
-    Serial.print("Unix time = ");
+    //Serial.print("Unix time = ");
     // Unix time starts on Jan 1 1970. In seconds, that's 2208988800:
     const unsigned long seventyYears = 2208988800UL;
     // subtract seventy years:
     unsigned long epoch = secsSince1900 - seventyYears;
     // print Unix time:
-    Serial.println(epoch);
+    //Serial.println(epoch);
 
 
     // print the hour, minute and second:
-    Serial.print("The UTC time is ");       // UTC is the time at Greenwich Meridian (GMT)
-    Serial.print((epoch % 86400L) / 3600);  // print the hour (86400 equals secs per day)
-    Serial.print(':');
-    if (((epoch % 3600) / 60) < 10) {
+    //Serial.print("The UTC time is ");       // UTC is the time at Greenwich Meridian (GMT)
+    //Serial.print((epoch % 86400L) / 3600);  // print the hour (86400 equals secs per day)
+    //Serial.print(':');
+    //if (((epoch % 3600) / 60) < 10) {
       // In the first 10 minutes of each hour, we'll want a leading '0'
-      Serial.print('0');
-    }
+     // Serial.print('0');
+    //}
     // t_packet[0] = ((epoch % 86400L) / 3600); //h
     //t_packet[1] = ((epoch % 3600) / 60); //m
     // t_packet[2] = (epoch % 60);
 
 
-    Serial.print((epoch % 3600) / 60);  // print the minute (3600 equals secs per minute)
-    Serial.print(':');
-    if ((epoch % 60) < 10) {
+   // Serial.print((epoch % 3600) / 60);  // print the minute (3600 equals secs per minute)
+   // Serial.print(':');
+   // if ((epoch % 60) < 10) {
       // In the first 10 seconds of each minute, we'll want a leading '0'
-      Serial.print('0');
-    }
-    Serial.println(epoch % 60);  // print the second
+   //   Serial.print('0');
+    //}
+    //Serial.println(epoch % 60);  // print the second
 
 
     return epoch;

@@ -1,4 +1,4 @@
-#include "api/HardwareSPI.h"
+//#include "api/HardwareSPI.h"
 #include "screen_driver.h"
 #include "SPI.h"
 #include "Adafruit_GFX.h"
