@@ -108,7 +108,6 @@ void printPWMInfo(SAMD_PWM* PWM_Instance) {
 #endif
 
 void fan_cntrllr::setup125kHz(int pin) {
-
   PWM_Instance = new SAMD_PWM(pin, frequency, 0);
   //PWM_Instance->setResolution(16);
   if (PWM_Instance) {

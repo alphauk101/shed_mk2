@@ -10,6 +10,8 @@
 #include <Fonts/FreeSans12pt7b.h>
 #include <Fonts/FreeSans24pt7b.h>
 
+//#define POWER_STATES_DISPLAY //If enabled will display the plug states
+
 //#define DEBUG_SCREEN
 #define MCR_MAND_TASK_FXN \
   this->showPowerStates(); \
@@ -43,7 +45,7 @@
 #define VERITCAL_BASE_HEIGHT (SCREEN_HEIGHT - 30)
 #define NETWORK_ICOM_HORZ 285
 
-//PIR ICON 
+//PIR ICON
 #define PIR_ICON_HORZ 235
 #define PIR_ICON_VERT 0
 #define PIR_GRFX_WIDTH 40
@@ -75,6 +77,7 @@ typedef struct {
   bool update_power_states;
   bool PIR_current_State;
   bool screenBL_state;
+  uint16_t fanRPM;
   UL_TIMER_t screen_change_timer;
 } SCREEN_DATA;
 static SCREEN_DATA g_screen_data;
@@ -90,6 +93,7 @@ void SCRNDRV::init() {
   digitalWrite(BACKLIGHT_PIN, BACKLIGHT_ON);
   digitalWrite(RESET_PIN, HIGH);
   g_screen_data.screen_change_timer = 0;
+  g_screen_data.fanRPM = 0;
   //Set default data.
   g_screen_data.current_network_icon = signal_none;  //ensure this is not valid so it gets overwritten
   //Set to un connected
@@ -262,6 +266,7 @@ void SCRNDRV::setDefaultScreenLayout(bool update_if_changed = false, const std::
   tft.drawFastHLine(0, VERITCAL_BASE_HEIGHT, 320, ILI9341_BLACK);
   tft.drawFastHLine(0, VERITCAL_BASE_HEIGHT + 1, 320, ILI9341_BLACK);
 
+#ifdef POWER_STATES_DISPLAY
   tft.drawFastVLine((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
   tft.drawFastVLine((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER + 1), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
 
@@ -273,7 +278,13 @@ void SCRNDRV::setDefaultScreenLayout(bool update_if_changed = false, const std::
 
   tft.drawFastVLine((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 4), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
   tft.drawFastVLine(((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 4) + 1), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
+#else
 
+  tft.drawFastHLine((SCREEN_WIDTH * VERITCAL_BASE_HEIGHT), ((SCREEN_WIDTH * VERITCAL_BASE_HEIGHT) + SCREEN_WIDTH - 1), 1, ILI9341_BLACK);
+  //This should split the bottom section in 2
+  tft.drawFastVLine(((SCREEN_WIDTH / 2) + 1), (VERITCAL_BASE_HEIGHT), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT), ILI9341_BLACK);
+
+#endif
 
 
   // tft.drawFastVLine(41, 301, 20, ILI9341_BLACK);
@@ -348,6 +359,7 @@ void SCRNDRV::showPowerStates() {
     tft.setFont(DEFAULT_FONT);
     tft.setTextSize(0);
 
+#ifdef POWER_STATES_DISPLAY
     if (g_screen_data.power_states.lights == RELAY_LIGHT_ON) {
       //draw green
       tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
@@ -394,7 +406,13 @@ void SCRNDRV::showPowerStates() {
     }
     tft.setCursor(MISC_TEXT_CURSOR_X, MISC_TEXT_CURSOR_Y);
     tft.print("Misc");
+#else  //Shows the light state and the fan RPM as I am not using the plugs
 
+
+
+
+
+#endif
     g_screen_data.update_power_states = false;
   }
 }
@@ -507,11 +525,28 @@ void SCRNDRV::setPIRIcon(bool state) {
 
     if (g_screen_data.PIR_current_State) {
       tft.drawRGBBitmap(PIR_ICON_HORZ, PIR_ICON_VERT, (uint16_t*)pir_detected_grfx, PIR_GRFX_WIDTH, PIR_GRFX_HEIGHT);
-    }else{
-	  tft.fillRect(PIR_ICON_HORZ, PIR_ICON_VERT, PIR_ICON_VERT, PIR_GRFX_WIDTH, ILI9341_WHITE);
-	}
+    } else {
+      tft.fillRect(PIR_ICON_HORZ, PIR_ICON_VERT, PIR_ICON_VERT, PIR_GRFX_WIDTH, ILI9341_WHITE);
+    }
   }
 }
+
+
+void SCRNDRV::setFanRPM(uint16_t fan_rpm) {
+
+  if (g_screen_data.fanRPM != fan_rpm) {
+    g_screen_data.fanRPM = fan_rpm;
+
+    tft.setTextSize(0);
+    tft.setFont(DEFAULT_FONT);
+    //Set the highest temperature
+    tft.setCursor(FAN_RPM_H_POS, FAN_RPM_V_POS);
+    tft.print(g_screen_data.fanRPM);
+    tft.print("RPM");
+  }
+}
+
+
 
 /*
 Changes the screen type to next screen - sets up the staic compoents for the 

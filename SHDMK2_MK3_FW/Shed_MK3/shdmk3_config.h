@@ -142,6 +142,9 @@ typedef struct {
   bool connected;
 } NETWORK_INFO;
 
+typedef struct{
+  uint16_t fan_RPM;
+}FAN_STATE;
 
 typedef struct {
   ENVIRON_READS environmentals;
@@ -159,6 +162,8 @@ typedef struct {
   DateTime last_timestammp;
 
   NETWORK_INFO network_info;
+
+  FAN_STATE   fan_state;
 } SHED_APP;
 
 #endif

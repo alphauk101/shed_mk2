@@ -423,6 +423,11 @@ static void check_task_timers() {
   if ((current_time - fw_led_timer) > 500) {
     g_IOEXP_driver.toggle_firmwareLED_pin();
     fw_led_timer = current_time;
+
+    //Use this timer to grab the fan RPM, this will only update the 
+    //screen if the RPM has changed
+    g_shed_data.fan_state.fan_RPM = g_fan_controller.getRPM();
+    g_screen_driver.setFanRPM(g_shed_data.fan_state.fan_RPM);
   }
 
   //Temp and hum sensing
@@ -661,8 +666,8 @@ void loop() {
   MCR_SET_RELAY_STATES;
   delay(MAIN_LOOP_DELAY);
 
-  if (g_shed_data.app_timers.system_uptime_1hz > test_timer) {
-    PRINTOUT(g_fan_controller.getRPM());
-    test_timer = g_shed_data.app_timers.system_uptime_1hz;
-  }
+  //if (g_shed_data.app_timers.system_uptime_1hz > test_timer) {
+  //  PRINTOUT(g_fan_controller.getRPM());
+   // test_timer = g_shed_data.app_timers.system_uptime_1hz;
+  //}
 }

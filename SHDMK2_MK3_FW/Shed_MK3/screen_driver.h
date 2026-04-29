@@ -12,6 +12,9 @@
 #define DEFAULT_ORIENTATION 3
 
 
+#define FAN_RPM_H_POS   10
+#define FAN_RPM_V_POS   10
+
 #define BACKLIGHT_ON LOW
 #define BACKLIGHT_OFF HIGH
 
@@ -43,6 +46,7 @@ public:
   void setNetworkState(networkState_icon);
   void setShowNetConnect(void);
   void changeViewingScreen(void);
+  void setFanRPM(uint16_t);
 private:
   void doReset(void);
   //void setDefaultScreenLayout(const std::string&);
