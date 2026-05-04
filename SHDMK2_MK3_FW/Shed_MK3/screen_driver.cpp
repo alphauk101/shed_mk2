@@ -15,7 +15,8 @@
 //#define DEBUG_SCREEN
 #define MCR_MAND_TASK_FXN \
   this->showPowerStates(); \
-  this->setNetworkIcon()
+  this->setNetworkIcon(); \
+  this->setFanRPM(g_screen_data.fanRPM)
 
 #define SPI_SPEED 8000000
 
@@ -24,7 +25,7 @@
 #define HUGE_FONT &FreeSans24pt7b
 
 //Position for the text in the power states boxes
-#define LIGHT_TEXT_CURSOR_X 15
+#define LIGHT_TEXT_CURSOR_X 30
 #define LIGHT_TEXT_CURSOR_Y 230
 #define FAN_TEXT_CURSOR_X 105
 #define FAN_TEXT_CURSOR_Y LIGHT_TEXT_CURSOR_Y
@@ -32,6 +33,10 @@
 #define BLOWER_TEXT_CURSOR_Y LIGHT_TEXT_CURSOR_Y
 #define MISC_TEXT_CURSOR_X 260
 #define MISC_TEXT_CURSOR_Y LIGHT_TEXT_CURSOR_Y
+
+#define FAN_RPM_H_POS   180
+#define FAN_RPM_V_POS   230
+
 
 
 
@@ -93,7 +98,7 @@ void SCRNDRV::init() {
   digitalWrite(BACKLIGHT_PIN, BACKLIGHT_ON);
   digitalWrite(RESET_PIN, HIGH);
   g_screen_data.screen_change_timer = 0;
-  g_screen_data.fanRPM = 0;
+  g_screen_data.fanRPM = 0xFFFF;
   //Set default data.
   g_screen_data.current_network_icon = signal_none;  //ensure this is not valid so it gets overwritten
   //Set to un connected
@@ -408,8 +413,18 @@ void SCRNDRV::showPowerStates() {
     tft.print("Misc");
 #else  //Shows the light state and the fan RPM as I am not using the plugs
 
-
-
+    if (g_screen_data.power_states.lights == RELAY_LIGHT_ON) {
+      //draw green
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT + 2, (SCREEN_WIDTH / 2), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
+      tft.setTextColor(PS_FONTCOL_ON);
+      tft.setCursor(LIGHT_TEXT_CURSOR_X, LIGHT_TEXT_CURSOR_Y);
+      tft.print("Light ON");
+    } else {
+      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT + 2, (SCREEN_WIDTH / 2), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
+      tft.setTextColor(PS_FONTCOL_OFF);
+      tft.setCursor(LIGHT_TEXT_CURSOR_X, LIGHT_TEXT_CURSOR_Y);
+      tft.print("Light OFF");
+    }
 
 
 #endif
@@ -537,12 +552,21 @@ void SCRNDRV::setFanRPM(uint16_t fan_rpm) {
   if (g_screen_data.fanRPM != fan_rpm) {
     g_screen_data.fanRPM = fan_rpm;
 
+   //tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT + 2, (SCREEN_WIDTH / 2), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
+
+    tft.fillRect( (SCREEN_WIDTH / 2)+5, 
+                    VERITCAL_BASE_HEIGHT+5,
+                    (SCREEN_WIDTH / 2),
+                    (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, 
+                    ILI9341_WHITE);
+
     tft.setTextSize(0);
     tft.setFont(DEFAULT_FONT);
     //Set the highest temperature
     tft.setCursor(FAN_RPM_H_POS, FAN_RPM_V_POS);
+    tft.print("Fan: ");
     tft.print(g_screen_data.fanRPM);
-    tft.print("RPM");
+    tft.print(" RPM");
   }
 }
 

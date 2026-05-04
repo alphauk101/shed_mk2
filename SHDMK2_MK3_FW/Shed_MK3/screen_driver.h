@@ -12,9 +12,6 @@
 #define DEFAULT_ORIENTATION 3
 
 
-#define FAN_RPM_H_POS   10
-#define FAN_RPM_V_POS   10
-
 #define BACKLIGHT_ON LOW
 #define BACKLIGHT_OFF HIGH
 
