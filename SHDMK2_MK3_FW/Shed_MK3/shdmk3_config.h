@@ -73,6 +73,7 @@ use the below defines to set the states so it is synchronised with the hardware.
 #define SCREEN_UPDATE_TIME            250
 #define NETWORK_TASK_CHECK            10000
 #define RTC_TIMER_TASK                30000
+#define FAN_TIMER_TASK                2000
 #define COUNTDOWN_TIME_SECONDS        180
 //dryer time increments minutes (but for app in secs)
 #define MINUTE                        60
@@ -100,15 +101,8 @@ typedef struct {
   UL_TIMER_t dryer_timer = 0;
   UL_TIMER_t network_post_data = 0;
   UL_TIMER_t lightsaver_timer = 0;
+  UL_TIMER_t fancheck_timer = 0;
 } APP_TIMERS;
-
-
-typedef struct {
-  bool lights;
-  bool fan;
-  bool blower;
-  bool misc;
-} POWER_STATES;
 
 
 typedef struct {
@@ -149,7 +143,7 @@ typedef struct{
 typedef struct {
   ENVIRON_READS environmentals;
 
-  POWER_STATES power_states;
+  bool light_state;
 
   bool system_asleep = false;  //If sleeping, all modules should be in lowest power mode.
   bool sleep_countdown_act = false;

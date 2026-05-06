@@ -89,8 +89,7 @@ bool IOEXP_DRV::poweron_setup(void (*callback)(int, bool)) {
 
   this->btn_evt_callback = callback;
   //Set all the relays to off
-
-  this->set_relay_pins(false, false, false, false);
+  this->set_relay_pins(false);
 
   this->set_statusLED_pin(false);
   this->set_firmwareLED_pin(false);
@@ -136,34 +135,15 @@ void IOEXP_DRV::set_firmwareLED_pin(bool L1) {
   mcp.writePort(MCP23017Port::B, this->PORTB_PIN_STATE);
 }
 
-//(g_shed_data.power_states.blower, g_shed_data.power_states.lights, g_shed_data.power_states.misc, g_shed_data.power_states.fan);
-void IOEXP_DRV::set_relay_pins(bool blower, bool lights, bool misc, bool fan) {
 
-  /*Arranged to fit the hardware outputs*/
-  uint8_t temp_port = (this->PORTA_PIN_STATE & (RELAY_1_BP | RELAY_2_BP | RELAY_3_BP | RELAY_4_BP));
+void IOEXP_DRV::set_relay_pins(bool lights) {
 
-  if (blower == RELAY_ON) {
-    temp_port |= (1 << BLOWER_RELAY_BP);
-  } else {
-    temp_port &= ~(1 << BLOWER_RELAY_BP);
-  }
+  uint8_t temp_port = this->PORTA_PIN_STATE;
 
   if (lights == RELAY_ON) { //fan - inverted
     temp_port |= (1 << LIGHT_RELAY_BP);
   } else {
     temp_port &= ~(1 << LIGHT_RELAY_BP);
-  }
-
-  if (misc == RELAY_ON) {
-    temp_port |= (1 << MISC_RELAY_BP);
-  } else {
-    temp_port &= ~(1 << MISC_RELAY_BP);
-  }
-
-  if (fan == RELAY_ON) {
-    temp_port |= (1 << FAN_RELAY_BP);
-  } else {
-    temp_port &= ~(1 << FAN_RELAY_BP);
   }
 
   //This allows this fxn to be called repeatively without unnecessary calls to the mcp

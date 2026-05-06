@@ -44,6 +44,7 @@ public:
   void setShowNetConnect(void);
   void changeViewingScreen(void);
   void setFanRPM(uint16_t);
+  void setPowerStates(bool light);
 private:
   void doReset(void);
   //void setDefaultScreenLayout(const std::string&);

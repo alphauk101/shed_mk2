@@ -109,19 +109,13 @@ void NETMANAGER::do_metrics_post(SHED_APP* shddata_ptr, String trigger) {
   client_task = started;
 
   String ds = (shddata_ptr->door_status.current_state)?"open":"closed";
-  String bl = (shddata_ptr->power_states.blower)?"on":"off"; 
-  String fan = (shddata_ptr->power_states.fan)?"on":"off"; 
-  String misc = (shddata_ptr->power_states.misc)?"on":"off"; 
-  String lis = (shddata_ptr->power_states.lights)?"on":"off"; 
+  String lis = (shddata_ptr->light_state)?"on":"off"; 
 
   postBody = "{\"Itemp\":\"" + String(shddata_ptr->environmentals.internal_temp)
              + "\",\"Ihumid\":\"" + String(shddata_ptr->environmentals.internal_humidity)
              + "\",\"DewPoint\":\"" + String(shddata_ptr->environmentals.internal_dewpoint)
              + "\",\"Etemp\":\"" + String(shddata_ptr->environmentals.external_temp) 
              + "\",\"DoorState\":\"" + ds
-             + "\",\"Blower\":\"" + bl
-             + "\",\"Fan\":\"" + fan
-             + "\",\"Misc\":\"" + misc
              + "\",\"Lights\":\"" + lis
              + "\",\"trigger\":\"" + trigger
              + "\"}";

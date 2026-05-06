@@ -78,7 +78,7 @@ typedef struct {
   networkState_icon current_network_icon;
   networkState_icon update_network_icon;
   currentScreen current_screen;
-  POWER_STATES power_states;
+  bool light_state;
   bool update_power_states;
   bool PIR_current_State;
   bool screenBL_state;
@@ -337,15 +337,8 @@ void SCRNDRV::setShowNetConnect() {
 }
 
 
-void SCRNDRV::setPowerStates(bool light, bool fan, bool blower, bool misc) {
-
-  if ((g_screen_data.power_states.blower != blower) || (g_screen_data.power_states.fan != fan) || (g_screen_data.power_states.lights != light) || (g_screen_data.power_states.misc != misc)) {
-    g_screen_data.update_power_states = true;
-    g_screen_data.power_states.blower = blower;
-    g_screen_data.power_states.fan = fan;
-    g_screen_data.power_states.lights = light;
-    g_screen_data.power_states.misc = misc;
-  }
+void SCRNDRV::setPowerStates(bool light) {
+  g_screen_data.light_state = light;
 }
 
 void SCRNDRV::changeViewingScreen() {
@@ -364,56 +357,8 @@ void SCRNDRV::showPowerStates() {
     tft.setFont(DEFAULT_FONT);
     tft.setTextSize(0);
 
-#ifdef POWER_STATES_DISPLAY
-    if (g_screen_data.power_states.lights == RELAY_LIGHT_ON) {
-      //draw green
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
-      tft.setTextColor(PS_FONTCOL_ON);
 
-    } else {
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
-      tft.setTextColor(PS_FONTCOL_OFF);
-    }
-    tft.setCursor(LIGHT_TEXT_CURSOR_X, LIGHT_TEXT_CURSOR_Y);
-    tft.print("Light");
-
-
-    if (g_screen_data.power_states.fan == RELAY_FAN_ON) {
-      //draw green
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 1) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
-      tft.setTextColor(PS_FONTCOL_ON);
-    } else {
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 1) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
-      tft.setTextColor(PS_FONTCOL_OFF);
-    }
-    tft.setCursor(FAN_TEXT_CURSOR_X, FAN_TEXT_CURSOR_Y);
-    tft.print("Fan");
-
-
-    if (g_screen_data.power_states.blower == RELAY_BLOWER_ON) {
-      //draw green
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 2) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
-      tft.setTextColor(PS_FONTCOL_ON);
-    } else {
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 2) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
-      tft.setTextColor(PS_FONTCOL_OFF);
-    }
-    tft.setCursor(BLOWER_TEXT_CURSOR_X, BLOWER_TEXT_CURSOR_Y);
-    tft.print("Dryer");
-
-
-    if (g_screen_data.power_states.misc == RELAY_MISC_ON) {
-      tft.setTextColor(PS_FONTCOL_ON);
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 3) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
-    } else {
-      tft.setTextColor(PS_FONTCOL_OFF);
-      tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 3) + 2, VERITCAL_BASE_HEIGHT + 2, HORZ_PWRSTS_SECTION_WIDTH_DIVIDER - 2, (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_OFF);
-    }
-    tft.setCursor(MISC_TEXT_CURSOR_X, MISC_TEXT_CURSOR_Y);
-    tft.print("Misc");
-#else  //Shows the light state and the fan RPM as I am not using the plugs
-
-    if (g_screen_data.power_states.lights == RELAY_LIGHT_ON) {
+    if (g_screen_data.light_state == RELAY_LIGHT_ON) {
       //draw green
       tft.fillRect((HORZ_PWRSTS_SECTION_WIDTH_DIVIDER * 0), VERITCAL_BASE_HEIGHT + 2, (SCREEN_WIDTH / 2), (SCREEN_HEIGHT - VERITCAL_BASE_HEIGHT) - 2, PS_BGCOLOUR_ON);
       tft.setTextColor(PS_FONTCOL_ON);
@@ -426,8 +371,6 @@ void SCRNDRV::showPowerStates() {
       tft.print("Light OFF");
     }
 
-
-#endif
     g_screen_data.update_power_states = false;
   }
 }
@@ -487,10 +430,7 @@ void SCRNDRV::task(SHED_APP* shd_data, bool sys_sleep, bool net_isConnected, boo
   this->setPIRIcon(PIR_state);
 
 
-  this->setPowerStates(shd_data->power_states.lights,
-                       shd_data->power_states.fan,
-                       shd_data->power_states.blower,
-                       shd_data->power_states.misc);
+  this->setPowerStates(shd_data->light_state);
 
 
   //check if the timer has elapsed and change the screen accordingly.

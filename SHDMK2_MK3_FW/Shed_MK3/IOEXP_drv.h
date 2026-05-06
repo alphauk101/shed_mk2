@@ -30,7 +30,7 @@ public:
   bool task(void);
   void get_pressed_buttons(bool *, bool *);
   bool poweron_setup(void (*callback)(int, bool));
-  void set_relay_pins(bool, bool, bool, bool);
+  void set_relay_pins(bool); //only sets light now
   void set_firmwareLED_pin(bool);
   void toggle_firmwareLED_pin(void);
   void set_statusLED_pin(bool);

@@ -1,5 +1,6 @@
 #include <Wire.h>
 #include <math.h>
+#include <arduino-timer.h>
 #include "IOEXP_drv.h"
 #include "int_temphum.h"
 #include "ext_temphum.h"
@@ -7,7 +8,6 @@
 #include "screen_driver.h"
 #include "network_manager.h"
 #include "rtc_driver.h"
-#include <arduino-timer.h>
 #include "fan_controller.h"
 
 
@@ -16,7 +16,7 @@
 
 #define DEFAULT_RELAY_STATE false
 
-#define MCR_SET_RELAY_STATES g_IOEXP_driver.set_relay_pins(g_shed_data.power_states.blower, g_shed_data.power_states.lights, g_shed_data.power_states.misc, g_shed_data.power_states.fan);
+#define MCR_SET_RELAY_STATES g_IOEXP_driver.set_relay_pins(g_shed_data.light_state);
 
 #define RESET_PIR_LIGHT_TIME g_shed_data.app_timers.lightsaver_timer = PIR_NODETECTION_SECONDS
 
@@ -141,9 +141,6 @@ void setup() {
   }
 
 
-
-
-
 //#define GRAB_UUID
 #ifdef GRAB_UUID
   // Read the 128-bit unique ID
@@ -163,10 +160,8 @@ void setup() {
   g_shed_data.network_info.connected = false;
 
   //Set the default relay state
-  g_shed_data.power_states.blower = DEFAULT_RELAY_STATE;
-  g_shed_data.power_states.lights = DEFAULT_RELAY_STATE;
-  g_shed_data.power_states.fan = DEFAULT_RELAY_STATE;
-  g_shed_data.power_states.misc = DEFAULT_RELAY_STATE;
+  g_shed_data.light_state = DEFAULT_RELAY_STATE;
+
   g_shed_data.door_status.current_state = false;
   g_shed_data.door_status.open_counter = 0;
   g_shed_data.system_asleep = false;
@@ -176,22 +171,10 @@ void setup() {
   //MUST BE INIT'D BEFORE USING AN PERIPHERALS
   Wire.begin();
 
-  PRINTOUT("starting PWM");
-  g_fan_controller.init();
-
-  g_fan_controller.setFanLevel(g_fan_controller.FAN_ON);
-  delay(1000);
-  g_fan_controller.setFanLevel(g_fan_controller.FAN_75);
-  delay(1000);
-  g_fan_controller.setFanLevel(g_fan_controller.FAN_50);
-  delay(1000);
-  g_fan_controller.setFanLevel(g_fan_controller.FAN_25);
-  delay(1000);
-  g_fan_controller.setFanLevel(g_fan_controller.FAN_50);
-
-
-
   PRINTOUT("Shed MK3 - V0.3 ... Starting");
+
+  g_fan_controller.init();
+  g_fan_controller.setFanLevel(g_fan_controller.FAN_OFF);  //default to fan off.
 
   g_screen_driver.init();
   g_screen_driver.setStartUpMessage();
@@ -258,31 +241,7 @@ void setup() {
     g_screen_driver.updateStartUpMessage("", "", "", "", "", "", "RTC...ERROR");
   }
 
-
   timer.every(1000, onehz_callback);
-
-  //Turn the misc relay on to workaround the cheap chinese relay issue.
-  //g_shed_data.power_states.misc = RELAY_MISC_OFF;
-
-  /*
-  while (1) {
-    g_shed_data.power_states.misc = RELAY_OFF;
-    g_shed_data.power_states.blower = RELAY_OFF;
-    g_shed_data.power_states.fan = RELAY_OFF;
-    g_shed_data.power_states.lights = RELAY_OFF;
-    MCR_SET_RELAY_STATES;
-
-    delay(500);
-
-    g_shed_data.power_states.misc = RELAY_ON;
-    g_shed_data.power_states.blower = RELAY_ON;
-    g_shed_data.power_states.fan = RELAY_ON;
-    g_shed_data.power_states.lights = RELAY_ON;
-    MCR_SET_RELAY_STATES;
-
-    delay(500);
-  }
-*/
 
 #ifndef NO_DELAY_STARTUP
   //Small delay to allow visual confirmation
@@ -377,7 +336,7 @@ static void get_environment_sensors() {
 
   if (!isnan(et)) {  // check if 'is not a number'
     g_shed_data.environmentals.external_temp = et;
-    check_fan_state();
+    //check_fan_state();
 #if DEBUG_ENVIRONMENTS
     Serial.print("External temp *C = ");
     Serial.print(et);
@@ -397,7 +356,7 @@ static void get_environment_sensors() {
   }
 }
 
-
+/*
 void check_fan_state() {
   if (g_shed_data.environmentals.external_temp < FAN_OFF_TEMPERATURE) {
     if (g_shed_data.power_states.fan == RELAY_FAN_ON) {
@@ -412,7 +371,7 @@ void check_fan_state() {
     g_shed_data.power_states.fan = RELAY_FAN_ON;
   }
 }
-
+*/
 
 static void check_task_timers() {
   UL_TIMER_t current_time = millis();
@@ -424,7 +383,7 @@ static void check_task_timers() {
     g_IOEXP_driver.toggle_firmwareLED_pin();
     fw_led_timer = current_time;
 
-    //Use this timer to grab the fan RPM, this will only update the 
+    //Use this timer to grab the fan RPM, this will only update the
     //screen if the RPM has changed
     g_shed_data.fan_state.fan_RPM = g_fan_controller.getRPM();
     g_screen_driver.setFanRPM(g_shed_data.fan_state.fan_RPM);
@@ -440,7 +399,7 @@ static void check_task_timers() {
   if ((current_time - g_shed_data.app_timers.led_timer) > LED_DEFAULT_TIME) {
     //g_led_driver.show_temperature_as_color(g_shed_data.environmentals.internal_temp);
     //Keep it boring at the moment.
-    if (g_shed_data.power_states.lights) {
+    if (g_shed_data.light_state) {
       g_led_driver.show_low_awake_colour();
     } else {
       g_led_driver.show_lights_off_wake();
@@ -492,9 +451,14 @@ static void check_task_timers() {
     g_shed_data.app_timers.rtc_timer = current_time;
   }
 
+  if ((current_time - g_shed_data.app_timers.fancheck_timer) > FAN_TIMER_TASK) {
+    g_fan_controller.task(&g_shed_data);
+    g_shed_data.app_timers.fancheck_timer = current_time;
+  }
   //safe to call rapidly
   g_network_manager.task();
   g_IOEXP_driver.task();
+
 
   //checks whether the lights can be turned off to save power
   check_light_state();
@@ -604,39 +568,28 @@ void check_light_state() {
     if (pir) {
       RESET_PIR_LIGHT_TIME;  //ensure this is reset when pir fired
       //The PIR has seen someone, make the sure the lights are on and the timer is started
-      if (!g_shed_data.power_states.lights) {
-        g_shed_data.power_states.lights = RELAY_LIGHT_ON;
+      if (!g_shed_data.light_state) {
+        g_shed_data.light_state = RELAY_LIGHT_ON;
         //MCR_SET_RELAY_STATES;
         PRINTOUT("PIR -> LIGHTS ON!");
       }
     } else {
       //The PIR has not seen anyone
       if (g_shed_data.app_timers.lightsaver_timer == 0) {
-        if (g_shed_data.power_states.lights) {
-          g_shed_data.power_states.lights = RELAY_LIGHT_OFF;
+        if (g_shed_data.light_state) {
+          g_shed_data.light_state = RELAY_LIGHT_OFF;
           //MCR_SET_RELAY_STATES;
           PRINTOUT("PIR -> LIGHTS OFF!");
         }
       }
     }
   } else {
-    if (g_shed_data.power_states.lights == RELAY_LIGHT_ON) {
-      g_shed_data.power_states.lights = RELAY_LIGHT_OFF;
+    if (g_shed_data.light_state == RELAY_LIGHT_ON) {
+      g_shed_data.light_state = RELAY_LIGHT_OFF;
       PRINTOUT("PIR sleeping -> LIGHTS OFF!");
     }
   }
 }
-
-
-void check_blower_relay_timer() {
-  //If this is greater than zero then dryer is on!
-  if (g_shed_data.app_timers.dryer_timer > 0) {
-    g_shed_data.power_states.blower = RELAY_BLOWER_ON;
-  } else {
-    g_shed_data.power_states.blower = RELAY_BLOWER_OFF;
-  }
-}
-
 
 UL_TIMER_t test_timer = 0;
 void loop() {
@@ -646,7 +599,7 @@ void loop() {
   checkDoorState();  //check the door state
 
   g_IOEXP_driver.set_statusLED_pin(g_shed_data.door_status.current_state);
-  check_blower_relay_timer();
+  //check_blower_relay_timer();
 
   if (g_shed_data.sleep_countdown_act) {
     if (g_shed_data.app_timers.sys_sleep_timer == 0) {
@@ -668,6 +621,6 @@ void loop() {
 
   //if (g_shed_data.app_timers.system_uptime_1hz > test_timer) {
   //  PRINTOUT(g_fan_controller.getRPM());
-   // test_timer = g_shed_data.app_timers.system_uptime_1hz;
+  // test_timer = g_shed_data.app_timers.system_uptime_1hz;
   //}
 }

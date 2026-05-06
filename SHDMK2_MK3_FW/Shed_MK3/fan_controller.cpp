@@ -22,7 +22,6 @@ volatile uint8_t FANRPM_buff_cnt = 0;
 volatile FANTime_t FANRPM = 0;
 
 
-
 void fanIRQ() {
   FANTime_t now = micros();
   if (now - last_time > 500) {
@@ -32,7 +31,7 @@ void fanIRQ() {
       FANRPM_buff_cnt++;
     }
   }
-  last_time =  now;
+  last_time = now;
 }
 
 void fan_cntrllr::init() {
@@ -43,6 +42,37 @@ void fan_cntrllr::init() {
   pinMode(interruptPin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(interruptPin), fanIRQ, FALLING);
 }
+
+void fan_cntrllr::task(SHED_APP* g_shed_ptr) {
+
+  if (
+    (g_shed_ptr->door_status.current_state == true) ||                 //door open -> turn fan off.
+    (g_shed_ptr->environmentals.external_temp < FAN_OFF_TEMPERATURE))  //its too cold outside to keep the fan on (turns the shed into a fridge!)
+  {
+    this->setFanLevel(this->FAN_OFF);
+  } else {
+
+    //If the inside of the shed is much higher than the outside this could inidicate that the bike
+    //has been put away hot, its a good idead to flush out the heat before it can cause hi humuidity
+    float tmp_diff = g_shed_ptr->environmentals.internal_temp - g_shed_ptr->environmentals.external_temp;
+    if (tmp_diff > FAN_IN_OUT_TEMP_DIFF) {
+      //The current internal vs. external temp difference is greater than the threshold.
+      this->setFanLevel(this->FAN_ON);
+    } else {
+      //Finally check the humidity
+      if (g_shed_ptr->environmentals.internal_humidity >= FAN_HUMIDITY_MAX) {
+        this->setFanLevel(this->FAN_75);
+      } else if (g_shed_ptr->environmentals.internal_humidity >= FAN_HUMIDITY_MID) {
+        this->setFanLevel(this->FAN_50);
+      } else if (g_shed_ptr->environmentals.internal_humidity >= FAN_HUMIDITY_LOW) {
+        this->setFanLevel(this->FAN_25);
+      } else {
+        this->setFanLevel(this->FAN_OFF);
+      }
+    }
+  }
+}
+
 
 FANTime_t fan_cntrllr::getRPM() {
   // 1. Handle empty buffer to avoid division by zero
@@ -123,29 +153,28 @@ void fan_cntrllr::setup125kHz(int pin) {
   }
 }
 
-
+fan_cntrllr::FAN_SPEED tmp_speed = fan_cntrllr::FAN_INIT;
 void fan_cntrllr::setFanLevel(FAN_SPEED fanspd) {
-  //PWM_Instance->setPWM_DCPercentage_manual(pinToUse, percent);
-  //PWM_Instance->setPWM_manual(pinToUse, 65535 / 2);
-  uint16_t maxDuty = (1 << 16) - 1;
-  //uint16_t maxDuty = (1 << PWM_Instance->getResolution()) - 1;
-  switch (fanspd) {
-    case FAN_OFF:
-      PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 0);
-      break;
-    case FAN_25:
-      PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 33);
-      break;
-    case FAN_50:
-      PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 65);
-      break;
-    case FAN_75:
-      PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 90);
-      break;
-    case FAN_ON:
-      PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 100);
-      //PWM_Instance->setPWM_manual(pinToUse, maxDuty);
-      break;
-    default: break;
+
+  if (fanspd != tmp_speed) {
+    fanspd = tmp_speed;
+    switch (fanspd) {
+      case FAN_OFF:
+        PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 0);
+        break;
+      case FAN_25:
+        PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 33);
+        break;
+      case FAN_50:
+        PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 65);
+        break;
+      case FAN_75:
+        PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 90);
+        break;
+      case FAN_ON:
+        PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 100);
+        break;
+      default: break;
+    }
   }
 }
