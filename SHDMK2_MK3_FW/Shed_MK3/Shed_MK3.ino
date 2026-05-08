@@ -424,7 +424,7 @@ static void check_task_timers() {
   if ((current_time - g_shed_data.app_timers.rtc_timer) > RTC_TIMER_TASK) {
     if (g_rtc_driver.task(&g_shed_data)) {
       //Get a snapshot of the time
-      g_rtc_driver.getLatestTime(&g_shed_data.last_timestammp);
+      g_rtc_driver.getLatestTime(&g_shed_data.last_timestamp);
 
     } else {
       /*The RTC has reported not running or not sest, this will try to 

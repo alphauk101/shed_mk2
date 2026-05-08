@@ -44,33 +44,39 @@ void fan_cntrllr::init() {
 }
 
 void fan_cntrllr::task(SHED_APP* g_shed_ptr) {
+    fan_cntrllr::FAN_SPEED target_level = this->FAN_OFF;
+    float internal_t = g_shed_ptr->environmentals.internal_temp;
+    float external_t = g_shed_ptr->environmentals.external_temp;
+    float humidity   = g_shed_ptr->environmentals.internal_humidity;
+    int current_hour = g_shed_ptr->last_timestamp.hour();
 
-  if (
-    (g_shed_ptr->door_status.current_state == true) ||                 //door open -> turn fan off.
-    (g_shed_ptr->environmentals.external_temp < FAN_OFF_TEMPERATURE))  //its too cold outside to keep the fan on (turns the shed into a fridge!)
-  {
-    this->setFanLevel(this->FAN_OFF);
-  } else {
-
-    //If the inside of the shed is much higher than the outside this could inidicate that the bike
-    //has been put away hot, its a good idead to flush out the heat before it can cause hi humuidity
-    float tmp_diff = g_shed_ptr->environmentals.internal_temp - g_shed_ptr->environmentals.external_temp;
-    if (tmp_diff > FAN_IN_OUT_TEMP_DIFF) {
-      //The current internal vs. external temp difference is greater than the threshold.
-      this->setFanLevel(this->FAN_ON);
-    } else {
-      //Finally check the humidity
-      if (g_shed_ptr->environmentals.internal_humidity >= FAN_HUMIDITY_MAX) {
-        this->setFanLevel(this->FAN_75);
-      } else if (g_shed_ptr->environmentals.internal_humidity >= FAN_HUMIDITY_MID) {
-        this->setFanLevel(this->FAN_50);
-      } else if (g_shed_ptr->environmentals.internal_humidity >= FAN_HUMIDITY_LOW) {
-        this->setFanLevel(this->FAN_25);
-      } else {
+    // 1. HARD OVERRIDES (Safety/Physical)
+    if (g_shed_ptr->door_status.current_state == true || external_t < FAN_OFF_TEMPERATURE) {
         this->setFanLevel(this->FAN_OFF);
-      }
+        return; 
     }
-  }
+
+    // 2. DETERMINE DESIRED SPEED BASED ON ENVIRONMENT
+    float tmp_diff = internal_t - external_t;
+
+    if (tmp_diff > FAN_IN_OUT_TEMP_DIFF) {
+        target_level = this->FAN_ON; // Heat flush (Hot bike)
+    } 
+    else if (g_shed_ptr->environmentals.internal_dewpoint > MAX_DEW_THRESHOLD) {
+        target_level = this->FAN_75; // Moisture prevention
+    }
+    else if (humidity >= FAN_HUMIDITY_MAX) target_level = this->FAN_75;
+    else if (humidity >= FAN_HUMIDITY_MID) target_level = this->FAN_50;
+    else if (humidity >= FAN_HUMIDITY_LOW) target_level = this->FAN_25;
+
+    // 3. APPLY CONSTRAINTS (Night Mode)
+    bool is_night = (current_hour >= FAN_LOW_NIGHT_MODE_STARTHOUR || current_hour <= FAN_LOW_NIGHT_MODE_ENDHOUR);
+    
+    if (is_night && target_level > this->FAN_25) {
+        target_level = this->FAN_25; 
+    }
+
+    this->setFanLevel(target_level);
 }
 
 

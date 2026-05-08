@@ -8,6 +8,13 @@
 #define FAN_HUMIDITY_LOW 50
 #define FAN_IN_OUT_TEMP_DIFF 15  //If the inside temperature difference ve. out door exceeds this.
 
+#define MAX_DEW_THRESHOLD     3 //If the int dew gets within 3 degrees of threshold then blast it!
+
+//Night mode as the fan can be very loud!
+#define FAN_LOW_NIGHT_MODE_STARTHOUR      21
+#define FAN_LOW_NIGHT_MODE_ENDHOUR        8
+
+
 class fan_cntrllr {
 public:
   enum FAN_SPEED{

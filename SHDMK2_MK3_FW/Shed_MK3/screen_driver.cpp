@@ -740,15 +740,15 @@ void SCRNDRV::SCREENLAYOUT_Information(SHED_APP* shd_data, bool net_isConnected)
     tft.setCursor(TEXT_START_X, Y_cursor);
     /*Timestamp*/
     tft.print("Time: ");
-    tft.print(shd_data->last_timestammp.hour(), DEC);
+    tft.print(shd_data->last_timestamp.hour(), DEC);
     tft.print(':');
-    tft.print(shd_data->last_timestammp.minute(), DEC);
+    tft.print(shd_data->last_timestamp.minute(), DEC);
     tft.print(' ');
-    tft.print(shd_data->last_timestammp.day(), DEC);
+    tft.print(shd_data->last_timestamp.day(), DEC);
     tft.print('/');
-    tft.print(shd_data->last_timestammp.month(), DEC);
+    tft.print(shd_data->last_timestamp.month(), DEC);
     tft.print('/');
-    tft.print(shd_data->last_timestammp.year(), DEC);
+    tft.print(shd_data->last_timestamp.year(), DEC);
     Y_cursor += FONT_HEIGHT;
     tft.setCursor(TEXT_START_X, Y_cursor);
 

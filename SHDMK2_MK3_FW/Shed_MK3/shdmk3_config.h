@@ -153,7 +153,7 @@ typedef struct {
 
   DOOR_STATUS door_status;
 
-  DateTime last_timestammp;
+  DateTime last_timestamp;
 
   NETWORK_INFO network_info;
 
