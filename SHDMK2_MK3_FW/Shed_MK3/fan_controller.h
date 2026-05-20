@@ -26,6 +26,12 @@ public:
     FAN_ON,
   };
 
+  enum FAN_REASON{
+    FAN_UNKNOWN,
+    FAN_DOOR_OPEN,
+    FAN_LOW_TEMP,
+  };
+
   void setFanLevel(FAN_SPEED);
   void init(void);
   unsigned long getRPM(void);
@@ -34,7 +40,7 @@ public:
   calculate the required fan speed based on the current
   environmental parameters.
   */
-  void task(SHED_APP*);
+  FAN_REASON task(SHED_APP*);
 private:
   void setup125kHz(int pin);
 };

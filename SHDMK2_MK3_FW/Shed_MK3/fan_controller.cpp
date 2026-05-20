@@ -43,7 +43,7 @@ void fan_cntrllr::init() {
   attachInterrupt(digitalPinToInterrupt(interruptPin), fanIRQ, FALLING);
 }
 
-void fan_cntrllr::task(SHED_APP* g_shed_ptr) {
+fan_cntrllr::FAN_REASON fan_cntrllr::task(SHED_APP* g_shed_ptr) {
   fan_cntrllr::FAN_SPEED target_level = this->FAN_OFF;
   float internal_t = g_shed_ptr->environmentals.internal_temp;
   float external_t = g_shed_ptr->environmentals.external_temp;
@@ -53,7 +53,7 @@ void fan_cntrllr::task(SHED_APP* g_shed_ptr) {
   // 1. HARD OVERRIDES (Safety/Physical)
   if (g_shed_ptr->door_status.current_state == true || external_t < FAN_OFF_TEMPERATURE) {
     this->setFanLevel(this->FAN_OFF);
-    return;
+    return FAN_DOOR_OPEN;
   }
 
   float tmp_diff = internal_t - external_t;
