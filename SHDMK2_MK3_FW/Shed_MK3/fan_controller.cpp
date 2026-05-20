@@ -3,8 +3,8 @@
 #include <Arduino.h>
 #include "SAMD_PWM.h"
 
-//#define PRINT_PWM_INFO
-const byte interruptPin = 4;
+#define PRINT_PWM_INFO
+const byte interruptPin = FAN_IRQ_PIN;
 
 //creates pwm instance
 SAMD_PWM* PWM_Instance;
@@ -44,39 +44,39 @@ void fan_cntrllr::init() {
 }
 
 void fan_cntrllr::task(SHED_APP* g_shed_ptr) {
-    fan_cntrllr::FAN_SPEED target_level = this->FAN_OFF;
-    float internal_t = g_shed_ptr->environmentals.internal_temp;
-    float external_t = g_shed_ptr->environmentals.external_temp;
-    float humidity   = g_shed_ptr->environmentals.internal_humidity;
-    int current_hour = g_shed_ptr->last_timestamp.hour();
+  fan_cntrllr::FAN_SPEED target_level = this->FAN_OFF;
+  float internal_t = g_shed_ptr->environmentals.internal_temp;
+  float external_t = g_shed_ptr->environmentals.external_temp;
+  float humidity = g_shed_ptr->environmentals.internal_humidity;
+  int current_hour = g_shed_ptr->last_timestamp.hour();
 
-    // 1. HARD OVERRIDES (Safety/Physical)
-    if (g_shed_ptr->door_status.current_state == true || external_t < FAN_OFF_TEMPERATURE) {
-        this->setFanLevel(this->FAN_OFF);
-        return; 
-    }
+  // 1. HARD OVERRIDES (Safety/Physical)
+  if (g_shed_ptr->door_status.current_state == true || external_t < FAN_OFF_TEMPERATURE) {
+    this->setFanLevel(this->FAN_OFF);
+    return;
+  }
 
-    // 2. DETERMINE DESIRED SPEED BASED ON ENVIRONMENT
-    float tmp_diff = internal_t - external_t;
+  float tmp_diff = internal_t - external_t;
 
-    if (tmp_diff > FAN_IN_OUT_TEMP_DIFF) {
-        target_level = this->FAN_ON; // Heat flush (Hot bike)
-    } 
-    else if (g_shed_ptr->environmentals.internal_dewpoint > MAX_DEW_THRESHOLD) {
-        target_level = this->FAN_75; // Moisture prevention
-    }
-    else if (humidity >= FAN_HUMIDITY_MAX) target_level = this->FAN_75;
-    else if (humidity >= FAN_HUMIDITY_MID) target_level = this->FAN_50;
-    else if (humidity >= FAN_HUMIDITY_LOW) target_level = this->FAN_25;
+  if (tmp_diff > FAN_IN_OUT_TEMP_DIFF) {
+    target_level = this->FAN_ON;  // Heat flush (Hot bike)
+  } else if (g_shed_ptr->environmentals.internal_dewpoint > MAX_DEW_THRESHOLD) {
+    target_level = this->FAN_75;  // Moisture prevention
+  } else if (humidity >= FAN_HUMIDITY_MAX) target_level = this->FAN_75;
+  else if (humidity >= FAN_HUMIDITY_MID) target_level = this->FAN_50;
+  else if (humidity >= FAN_HUMIDITY_LOW) target_level = this->FAN_25;
 
-    // 3. APPLY CONSTRAINTS (Night Mode)
-    bool is_night = (current_hour >= FAN_LOW_NIGHT_MODE_STARTHOUR || current_hour <= FAN_LOW_NIGHT_MODE_ENDHOUR);
-    
-    if (is_night && target_level > this->FAN_25) {
-        target_level = this->FAN_25; 
-    }
+  // 3. APPLY CONSTRAINTS (Night Mode)
+  bool is_night = (current_hour >= FAN_LOW_NIGHT_MODE_STARTHOUR || current_hour <= FAN_LOW_NIGHT_MODE_ENDHOUR);
 
-    this->setFanLevel(target_level);
+  if (is_night && target_level > this->FAN_25) {
+    target_level = this->FAN_25;
+  }
+
+  //Serial.println("Fan task: ");
+  //Serial.println(target_level);
+
+  this->setFanLevel(target_level);
 }
 
 
@@ -160,27 +160,50 @@ void fan_cntrllr::setup125kHz(int pin) {
 }
 
 fan_cntrllr::FAN_SPEED tmp_speed = fan_cntrllr::FAN_INIT;
-void fan_cntrllr::setFanLevel(FAN_SPEED fanspd) {
+void fan_cntrllr::setFanLevel(fan_cntrllr::FAN_SPEED fanspd) {
 
   if (fanspd != tmp_speed) {
-    fanspd = tmp_speed;
+    tmp_speed = fanspd;
     switch (fanspd) {
-      case FAN_OFF:
+      case fan_cntrllr::FAN_OFF:
+#ifdef PRINT_PWM_INFO
+        Serial.println("Fan: OFF");
+#endif
         PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 0);
         break;
-      case FAN_25:
-        PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 33);
+      case fan_cntrllr::FAN_25:
+        PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 40);
+#ifdef PRINT_PWM_INFO
+        Serial.println("Fan: 25%");
+#endif
         break;
-      case FAN_50:
+      case fan_cntrllr::FAN_50:
         PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 65);
+#ifdef PRINT_PWM_INFO
+        Serial.println("Fan: 50%");
+#endif
         break;
-      case FAN_75:
+      case fan_cntrllr::FAN_75:
         PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 90);
+#ifdef PRINT_PWM_INFO
+        Serial.println("Fan: 75%");
+#endif
         break;
-      case FAN_ON:
+      case fan_cntrllr::FAN_ON:
         PWM_Instance->setPWM_DCPercentage_manual(pinToUse, 100);
+#ifdef PRINT_PWM_INFO
+        Serial.println("Fan:FULL");
+#endif
         break;
-      default: break;
+      default:
+#ifdef PRINT_PWM_INFO
+        Serial.println("Fan: UNKNOWN STATE!");
+#endif
+        break;
     }
+  } else {
+#ifdef PRINT_PWM_INFO
+    Serial.println("Fan set - failed!");
+#endif
   }
 }

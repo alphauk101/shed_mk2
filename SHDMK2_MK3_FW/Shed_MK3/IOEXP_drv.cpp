@@ -139,11 +139,13 @@ void IOEXP_DRV::set_firmwareLED_pin(bool L1) {
 void IOEXP_DRV::set_relay_pins(bool lights) {
 
   uint8_t temp_port = this->PORTA_PIN_STATE;
+  uint8_t relay_pins =  (1 << LIGHT_RELAY_BP) | (1 << MISC_RELAY_BP) | (1 << BLOWER_RELAY_BP) | (1 << FAN_RELAY_BP) ;
 
+  //turn them all on!... or off
   if (lights == RELAY_ON) { //fan - inverted
-    temp_port |= (1 << LIGHT_RELAY_BP);
+    temp_port |= relay_pins;
   } else {
-    temp_port &= ~(1 << LIGHT_RELAY_BP);
+    temp_port &= ~(relay_pins);
   }
 
   //This allows this fxn to be called repeatively without unnecessary calls to the mcp

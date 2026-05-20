@@ -3,7 +3,7 @@
 #include "RTClib.h"
 
 
-#define PROTO_HARDWARE //Define if using proto hardware only
+//#define PROTO_HARDWARE //Define if using proto hardware only
 
 
 #define DEBUG_OUT
@@ -21,7 +21,7 @@
 #define TRIGGER_TYPE_POWERON      "POWERON"
 
 /**********DEFAULT SCREEN MESSAGES********************/
-#define STARTUP_MESSAGE "Shed mk3.... V0.3"
+#define STARTUP_MESSAGE "Shed mk3.... V0.5"
 #define SCREEN_CHANGE_TIMEOUT 10000  //change between screen
 /*****************************************************/
 
@@ -39,7 +39,13 @@ use the below defines to set the states so it is synchronised with the hardware.
 #define BUTTON_A                  1
 #define BUTTON_B                  2
 
-#define FAN_CNTRL_OUTPUT          5
+//#define FAN_CNTRL_OUTPUT          5
+//#define FAN_IRQ_PIN               4
+
+#define FAN_CNTRL_OUTPUT          4
+#define FAN_IRQ_PIN               5
+
+
 #define DEFAULT_FAN_SPEED         75
 
 #define RELAY_ON                  true

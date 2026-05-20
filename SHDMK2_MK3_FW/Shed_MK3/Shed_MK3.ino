@@ -171,10 +171,14 @@ void setup() {
   //MUST BE INIT'D BEFORE USING AN PERIPHERALS
   Wire.begin();
 
-  PRINTOUT("Shed MK3 - V0.3 ... Starting");
+  PRINTOUT("Shed MK3 - V0.5 ... Starting");
 
   g_fan_controller.init();
-  g_fan_controller.setFanLevel(g_fan_controller.FAN_OFF);  //default to fan off.
+  g_fan_controller.setFanLevel(fan_cntrllr::FAN_OFF);  //default to fan off.
+
+
+
+  //while(1){}
 
   g_screen_driver.init();
   g_screen_driver.setStartUpMessage();
