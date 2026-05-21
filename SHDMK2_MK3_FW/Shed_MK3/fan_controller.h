@@ -3,9 +3,9 @@
 #include "shdmk3_config.h"
 
 //#define _PWM_LOGLEVEL_       4
-#define FAN_HUMIDITY_MAX 85  //IF humidity if higher than this then the fan will be on full
-#define FAN_HUMIDITY_MID 65
-#define FAN_HUMIDITY_LOW 50
+#define FAN_HUMIDITY_MAX 50  //IF humidity if higher than this then the fan will be on full
+#define FAN_HUMIDITY_MID 40
+#define FAN_HUMIDITY_LOW 20
 #define FAN_IN_OUT_TEMP_DIFF 15  //If the inside temperature difference ve. out door exceeds this.
 
 #define MAX_DEW_THRESHOLD     3 //If the int dew gets within 3 degrees of threshold then blast it!
@@ -27,9 +27,15 @@ public:
   };
 
   enum FAN_REASON{
-    FAN_UNKNOWN,
+    FAN_UNKNOWN = 0,
     FAN_DOOR_OPEN,
     FAN_LOW_TEMP,
+    FAN_HOT_FLUSH,
+    FAN_HUMID_HIGH,
+    FAN_HUMID_MED,
+    FAN_HUMID_LOW,
+    FAN_DEWPOINT,
+    FAN_NIGHTMODE,
   };
 
   void setFanLevel(FAN_SPEED);
@@ -41,6 +47,8 @@ public:
   environmental parameters.
   */
   FAN_REASON task(SHED_APP*);
+
+  static String convert_reason_code_string(int reason);
 private:
   void setup125kHz(int pin);
 };
