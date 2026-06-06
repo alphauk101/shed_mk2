@@ -456,7 +456,7 @@ static void check_task_timers() {
   }
 
   if ((current_time - g_shed_data.app_timers.fancheck_timer) > FAN_TIMER_TASK) {
-    g_fan_controller.task(&g_shed_data);
+    g_shed_data.fan_state.fan_reason = (int) g_fan_controller.task(&g_shed_data);
     g_shed_data.app_timers.fancheck_timer = current_time;
   }
   //safe to call rapidly

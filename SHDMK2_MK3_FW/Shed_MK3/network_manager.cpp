@@ -1,5 +1,6 @@
 #include "network_manager.h"
 #include "shdmk3_config.h"
+#include "fan_controller.h"
 #include <SPI.h>
 #include <WiFiUdp.h>
 #include <ArduinoHttpClient.h>
@@ -132,6 +133,8 @@ void NETMANAGER::do_metrics_post(SHED_APP* shddata_ptr, String trigger) {
   String ds = (shddata_ptr->door_status.current_state) ? "open" : "closed";
   String lis = (shddata_ptr->light_state) ? "on" : "off";
 
+  String fan_reason = fan_cntrllr::convert_reason_code_string(shddata_ptr->fan_state.fan_reason);
+
   postBody = "{\"Itemp\":\"" + String(shddata_ptr->environmentals.internal_temp)
              + "\",\"Ihumid\":\"" + String(shddata_ptr->environmentals.internal_humidity)
              + "\",\"DewPoint\":\"" + String(shddata_ptr->environmentals.internal_dewpoint)
@@ -139,6 +142,7 @@ void NETMANAGER::do_metrics_post(SHED_APP* shddata_ptr, String trigger) {
              + "\",\"DoorState\":\"" + ds
              + "\",\"Lights\":\"" + lis
              + "\",\"trigger\":\"" + trigger
+             + "\",\"fan\":\"" + fan_reason
              + "\"}";
 
 

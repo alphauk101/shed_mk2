@@ -144,6 +144,8 @@ typedef struct {
 
 typedef struct{
   uint16_t fan_RPM;
+
+  int fan_reason;
 }FAN_STATE;
 
 typedef struct {

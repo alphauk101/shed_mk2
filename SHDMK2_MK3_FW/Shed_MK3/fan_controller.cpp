@@ -43,40 +43,138 @@ void fan_cntrllr::init() {
   attachInterrupt(digitalPinToInterrupt(interruptPin), fanIRQ, FALLING);
 }
 
+String res_out;
+String fan_cntrllr::convert_reason_code_string(int reason)
+{
+  res_out.reserve(17);
+
+  switch (reason) {
+    case FAN_UNKNOWN:
+      res_out = "UNKNOWN";
+      break;
+    case FAN_DOOR_OPEN:
+      res_out = "DOOR OPEN";
+      break;
+    case FAN_LOW_TEMP:
+      res_out = "LOW EXTERNAL TEMP";
+      break;
+    case FAN_HOT_FLUSH:
+      res_out = "FLUSHING HEAT";
+      break;
+    case FAN_HUMID_HIGH:
+      res_out = "HIGH HUMIDITY";
+      break;
+    case FAN_HUMID_MED:
+      res_out = "MEDIUM HUMIDITY";
+      break;
+    case FAN_HUMID_LOW:
+      res_out = "LOW HUMIDITY";
+      break;
+    case FAN_DEWPOINT:
+      res_out = "DEW POINT";
+      break;
+    case FAN_NIGHTMODE:
+      res_out = "NIGHT MODE";
+      break;
+  }
+  return res_out;
+}
+
+
+
+#define FAN_MODE_DEBUG
 fan_cntrllr::FAN_REASON fan_cntrllr::task(SHED_APP* g_shed_ptr) {
   fan_cntrllr::FAN_SPEED target_level = this->FAN_OFF;
+  fan_cntrllr::FAN_REASON reason = FAN_UNKNOWN;
   float internal_t = g_shed_ptr->environmentals.internal_temp;
   float external_t = g_shed_ptr->environmentals.external_temp;
   float humidity = g_shed_ptr->environmentals.internal_humidity;
   int current_hour = g_shed_ptr->last_timestamp.hour();
 
-  // 1. HARD OVERRIDES (Safety/Physical)
-  if (g_shed_ptr->door_status.current_state == true || external_t < FAN_OFF_TEMPERATURE) {
+  if (g_shed_ptr->door_status.current_state == true) {
     this->setFanLevel(this->FAN_OFF);
+#ifdef FAN_MODE_DEBUG
+  Serial.print("Fan level: OFF");
+  Serial.print("Fan reason: DOOR OPEN");
+#endif
     return FAN_DOOR_OPEN;
+  }
+
+  if (external_t < FAN_OFF_TEMPERATURE) {
+    this->setFanLevel(this->FAN_OFF);
+#ifdef FAN_MODE_DEBUG
+  Serial.print("Fan level: OFF");
+  Serial.print("Fan reason: OUTSIDE TEMP TOO LOW");
+#endif
+    return FAN_LOW_TEMP;
   }
 
   float tmp_diff = internal_t - external_t;
 
   if (tmp_diff > FAN_IN_OUT_TEMP_DIFF) {
     target_level = this->FAN_ON;  // Heat flush (Hot bike)
+    reason = FAN_HOT_FLUSH;
   } else if (g_shed_ptr->environmentals.internal_dewpoint > MAX_DEW_THRESHOLD) {
     target_level = this->FAN_75;  // Moisture prevention
-  } else if (humidity >= FAN_HUMIDITY_MAX) target_level = this->FAN_75;
-  else if (humidity >= FAN_HUMIDITY_MID) target_level = this->FAN_50;
-  else if (humidity >= FAN_HUMIDITY_LOW) target_level = this->FAN_25;
+    reason = FAN_DEWPOINT;
+  } else if (humidity >= FAN_HUMIDITY_MAX) {
+    target_level = this->FAN_75;
+    reason = FAN_HUMID_HIGH;
+  } else if (humidity >= FAN_HUMIDITY_MID) {
+    target_level = this->FAN_50;
+    reason = FAN_HUMID_MED;
+  } else if (humidity >= FAN_HUMIDITY_LOW) {
+    target_level = this->FAN_25;
+    reason = FAN_HUMID_LOW;
+  }
 
-  // 3. APPLY CONSTRAINTS (Night Mode)
   bool is_night = (current_hour >= FAN_LOW_NIGHT_MODE_STARTHOUR || current_hour <= FAN_LOW_NIGHT_MODE_ENDHOUR);
 
   if (is_night && target_level > this->FAN_25) {
     target_level = this->FAN_25;
+    reason = FAN_NIGHTMODE;
   }
 
-  //Serial.println("Fan task: ");
-  //Serial.println(target_level);
+#ifdef FAN_MODE_DEBUG
+  Serial.print("Fan level: ");
+  Serial.println(target_level);
+  Serial.print("Fan reason: ");
+  switch (reason) {
+    case FAN_UNKNOWN:
+      Serial.println("ERR -> Unknown");
+      break;
+    case FAN_DOOR_OPEN:
+      Serial.println("FAN_DOOR_OPEN");
+      break;
+    case FAN_LOW_TEMP:
+      Serial.println("FAN_LOW_TEMP");
+      break;
+    case FAN_HOT_FLUSH:
+      Serial.println("FAN_HOT_FLUSH");
+      break;
+    case FAN_HUMID_HIGH:
+      Serial.println("FAN_HUMID_HIGH");
+      break;
+    case FAN_HUMID_MED:
+      Serial.println("FAN_HUMID_MED");
+      break;
+    case FAN_HUMID_LOW:
+      Serial.println("FAN_HUMID_LOW");
+      break;
+    case FAN_DEWPOINT:
+      Serial.println("FAN_DEWPOINT");
+      break;
+    case FAN_NIGHTMODE:
+      Serial.println("FAN_NIGHTMODE");
+      break;
+  }
+  Serial.println(target_level);
+
+
+#endif
 
   this->setFanLevel(target_level);
+  return reason;
 }
 
 
