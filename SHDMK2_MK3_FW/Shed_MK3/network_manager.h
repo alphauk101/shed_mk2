@@ -21,6 +21,7 @@ public:
   /*Triggers a post operation to the server*/
   void do_metrics_post(SHED_APP* shddata_ptr, String trigger);
 private:
+  bool connect_MQTT_broker(void);
   unsigned long  parseTimeFromPacket(void);
   //void sendNTPpacket(const char *address);
   void sendNTPpacket(IPAddress&);

@@ -3,17 +3,18 @@
 #include <SPI.h>
 #include <WiFiUdp.h>
 #include <ArduinoHttpClient.h>
+#include <ArduinoMqttClient.h>
 
-#ifndef PROTO_HARDWARE
-//Default for release hardware
-#define ENABLE_NTP  //debugging only, prevents repeative calls to NTP
+#define NETWORK_ENABLED
+
+
+#ifdef NETWORK_ENABLED
 #define ENABLE_METRIC_POST
-#else
-//Default for prototype
-//#define ENABLE_NTP 
-//#define ENABLE_METRIC_POST
-#endif
+#define ENABLE_NTP
 
+#define MQTT_MODE
+
+#endif
 
 char ssid[] = SECRET_SSID;    // your network SSID (name)
 char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
@@ -36,6 +37,16 @@ int port = 3000;
 WiFiClient WIFIclient;
 HttpClient httpClient = HttpClient(WIFIclient, serverAddress, port);
 
+#ifdef MQTT_MODE
+
+MqttClient mqttClient(WIFIclient);
+const char broker[] = "test.mosquitto.org";
+int MQTT_port = 1883;
+const char topic[] = "shedmk3/update";
+bool MQTT_connected = false;
+
+#endif
+
 
 //const char timeServer[] = "time.nist.gov";  // time.nist.gov NTP server
 IPAddress timeServer(162, 159, 200, 123);  // pool.ntp.org NTP server
@@ -48,7 +59,7 @@ WiFiUDP Udp;
 
 
 bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
-  
+
   postBody.reserve(256);
 
   // check for the WiFi module:
@@ -56,7 +67,6 @@ bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
     Serial.print("no module ");
     return false;
   }
-
   String fv = WiFi.firmwareVersion();
   if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
     Serial.print("Please upgrade the firmware: ");
@@ -67,8 +77,7 @@ bool NETMANAGER::init(SCRNDRV* scrn_ptr) {
 }
 
 
-bool NETMANAGER::connect_to_WIFI_network(SCRNDRV* scrn_ptr)
-{
+bool NETMANAGER::connect_to_WIFI_network(SCRNDRV* scrn_ptr) {
   int timeout = 10;
 
   //This updates the status incase we dont need to connect.
@@ -95,30 +104,44 @@ bool NETMANAGER::connect_to_WIFI_network(SCRNDRV* scrn_ptr)
   }
 }
 
-
+bool NETMANAGER::connect_MQTT_broker() {
+#ifdef MQTT_MODE
+  if (mqttClient.connect(broker, MQTT_port)) {
+    Serial.print("MQTT connected OK");
+    MQTT_connected = true;
+  } else {
+    Serial.print("MQTT connection failed! Error code = ");
+    Serial.println(mqttClient.connectError());
+  }
+#endif
+}
 
 
 
 void NETMANAGER::do_metrics_post(SHED_APP* shddata_ptr, String trigger) {
 
 #ifndef ENABLE_METRIC_POST
-  return; //dropout if not enabled.
+  return;  //dropout if not enabled.
 #endif
+
+
 
 
   client_task = started;
 
-  String ds = (shddata_ptr->door_status.current_state)?"open":"closed";
-  String lis = (shddata_ptr->light_state)?"on":"off"; 
+  String ds = (shddata_ptr->door_status.current_state) ? "open" : "closed";
+  String lis = (shddata_ptr->light_state) ? "on" : "off";
 
   postBody = "{\"Itemp\":\"" + String(shddata_ptr->environmentals.internal_temp)
              + "\",\"Ihumid\":\"" + String(shddata_ptr->environmentals.internal_humidity)
              + "\",\"DewPoint\":\"" + String(shddata_ptr->environmentals.internal_dewpoint)
-             + "\",\"Etemp\":\"" + String(shddata_ptr->environmentals.external_temp) 
+             + "\",\"Etemp\":\"" + String(shddata_ptr->environmentals.external_temp)
              + "\",\"DoorState\":\"" + ds
              + "\",\"Lights\":\"" + lis
              + "\",\"trigger\":\"" + trigger
              + "\"}";
+
+
   //Serial.print(postBody);
 }
 
@@ -126,6 +149,11 @@ void NETMANAGER::do_metrics_post(SHED_APP* shddata_ptr, String trigger) {
 
 bool NETMANAGER::task() {
 
+#ifdef MQTT_MODE
+  if (!MQTT_connected) {
+    this->connect_MQTT_broker();
+  }
+#endif
 
   //individual SM for web client tasks
   this->do_client_task();
@@ -148,17 +176,15 @@ void NETMANAGER::do_client_task() {
 }
 
 void NETMANAGER::CT_start_request() {
+
   if (this->isConnected()) {
     //We are connected... crack on
-    if (this->start_client_connection()) {
-      client_task = getServerResponse;
-    } else {
-      //Client request failed.
-      this->cancel_client_task();
-    }
-  } else {
-    //cancel this request as we are not connected to internet
+    this->start_client_connection();
+    client_task = getServerResponse;
+
+#ifdef MQTT_MODE
     this->cancel_client_task();
+#endif
   }
 }
 
@@ -239,12 +265,17 @@ void NETMANAGER::sendNTPpacket(IPAddress& address) {
 bool NETMANAGER::start_client_connection() {
   bool result = true;
 
+#ifdef MQTT_MODE
+  if (MQTT_connected) {
+    Serial.println("Sending to MQTT server");
+    mqttClient.beginMessage(topic);
+    mqttClient.print(postBody);
+    mqttClient.endMessage();
+  }
+#else
   Serial.println("connecting to server");
-
   //String postData = "{\"Itemp\":\"30\",\"Ihumid\":\"20\",\"DewPoint\":\"10\",\"Etemp\":\"-5\"}";
   //Serial.println(postData);
-
-
   httpClient.beginRequest();
   httpClient.post("/api/shdep/");
   httpClient.sendHeader("Content-Type", "application/json");
@@ -255,7 +286,7 @@ bool NETMANAGER::start_client_connection() {
   httpClient.endRequest();
 
   //Serial.println("connecting to server; completed.");
-
+#endif
 
   //  }
   return result;
@@ -308,19 +339,19 @@ unsigned long NETMANAGER::parseTimeFromPacket() {
     //Serial.print((epoch % 86400L) / 3600);  // print the hour (86400 equals secs per day)
     //Serial.print(':');
     //if (((epoch % 3600) / 60) < 10) {
-      // In the first 10 minutes of each hour, we'll want a leading '0'
-     // Serial.print('0');
+    // In the first 10 minutes of each hour, we'll want a leading '0'
+    // Serial.print('0');
     //}
     // t_packet[0] = ((epoch % 86400L) / 3600); //h
     //t_packet[1] = ((epoch % 3600) / 60); //m
     // t_packet[2] = (epoch % 60);
 
 
-   // Serial.print((epoch % 3600) / 60);  // print the minute (3600 equals secs per minute)
-   // Serial.print(':');
-   // if ((epoch % 60) < 10) {
-      // In the first 10 seconds of each minute, we'll want a leading '0'
-   //   Serial.print('0');
+    // Serial.print((epoch % 3600) / 60);  // print the minute (3600 equals secs per minute)
+    // Serial.print(':');
+    // if ((epoch % 60) < 10) {
+    // In the first 10 seconds of each minute, we'll want a leading '0'
+    //   Serial.print('0');
     //}
     //Serial.println(epoch % 60);  // print the second
 
